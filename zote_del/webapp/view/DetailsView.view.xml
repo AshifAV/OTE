@@ -1,0 +1,112 @@
+<mvc:View
+    controllerName="zotedel.controller.DetailsView"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    displayBlock="true"
+>
+    <Page
+        id="_IDGenPage"
+        title="Delivery Items"
+        showNavButton="true"
+        navButtonPress=".onNavBack"
+    >
+        <customHeader>
+            <Bar id="_IDGenBar">
+                <contentLeft>
+                    <Title
+                        id="_IDGenTitle1"
+                        text="Delivery Items for Invoice: {view>/InvoiceNo}"
+                        level="H4"
+                    />
+                </contentLeft>
+                <contentRight>
+                    <Button
+                        id="_IDGenButton"
+                        text="Refresh"
+                        press=".onRefresh"
+                        icon="sap-icon://refresh"
+                        type="Emphasized"
+                    />
+                </contentRight>
+            </Bar>
+        </customHeader>
+
+        <Table
+            id="idDeliveryTable"
+            items="{
+        path: '/ZDeliveryItemSet',
+        suspended: true,
+        templateShareable: false
+    }"
+            mode="MultiSelect"
+            growing="true"
+            growingThreshold="50"
+            noDataText="No items found for this invoice"
+        >
+            <!-- columns same as before -->
+            <columns>
+                <Column id="_IDGenColumn">
+                    <Text
+                        id="_IDGenText"
+                        text="Item No"
+                    />
+                </Column>
+                <Column id="_IDGenColumn1">
+                    <Text
+                        id="_IDGenText1"
+                        text="Material"
+                    />
+                </Column>
+                <Column id="_IDGenColumn2">
+                    <Text
+                        id="_IDGenText2"
+                        text="Quantity"
+                    />
+                </Column>
+                <Column id="_IDGenColumn3">
+                    <Text
+                        id="_IDGenText3"
+                        text="Description"
+                    />
+                </Column>
+            </columns>
+
+            <items>
+                <ColumnListItem id="_IDGenColumnListItem">
+                    <cells>
+                        <Text
+                            id="_IDGenText4"
+                            text="{ItemNo}"
+                        />
+                        <Text
+                            id="_IDGenText5"
+                            text="{Material}"
+                        />
+                        <ObjectNumber
+                            id="_IDGenObjectNumber1"
+                            number="{Quantity}"
+                        />
+                        <Text
+                            id="_IDGenText6"
+                            text="{Description}"
+                        />
+                    </cells>
+                </ColumnListItem>
+            </items>
+        </Table>
+
+        <footer>
+            <Toolbar id="_IDGenToolbar1">
+                <ToolbarSpacer id="_IDGenToolbarSpacer1" />
+                <Button
+                    id="_IDGenButton1"
+                    text="Update Material Freight Group"
+                    type="Accept"
+                    press=".onUpdateSelected"
+                    enabled="{= !!${view>/InvoiceNo} }"
+                />
+            </Toolbar>
+        </footer>
+    </Page>
+</mvc:View>

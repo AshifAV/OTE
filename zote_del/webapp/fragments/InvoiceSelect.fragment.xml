@@ -1,0 +1,55 @@
+<!-- zotedel.fragments.additem.fragment.xml -->
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:ndc="sap.ndc"
+>
+    <!-- Wrap everything in a VBox so the dialog sizes perfectly -->
+    <VBox
+        id="vBox1"
+        class="sapUiSmallMargin"
+        fitContainer="true"
+    >
+        <f:SimpleForm
+            id="invoiceForm"
+            editable="true"
+            layout="ResponsiveGridLayout"
+            labelSpanL="4"
+            labelSpanM="4"
+            emptySpanL="4"
+            emptySpanM="4"
+            columnsL="1"
+            columnsM="1"
+        >
+            <f:content>
+                <HBox
+                    id="_IDGenHBox"
+                    alignItems="Center"
+                    justifyContent="Start"
+                    class="sapUiTinyMarginTopBottom"
+                >
+                    <Input
+                        id="inpInv"
+                        placeholder="Enter or scan invoice"
+                        width="280px"
+                        value="{view>/InvoiceNo}"
+                        valueLiveUpdate="true"
+                        class="sapUiTinyMarginEnd"
+                        showValueHelp="false"
+                    />
+
+                    <ndc:BarcodeScannerButton
+                        id="btnScan"
+                        icon="sap-icon://bar-code"
+                        tooltip="Scan invoice barcode"
+                        scanSuccess=".onScanSuccess"
+                        scanFail=".onScanFail"
+                        inputLiveUpdate=".onScanLiveupdate"
+                    />
+                </HBox>
+            </f:content>
+        </f:SimpleForm>
+    </VBox>
+</core:FragmentDefinition>
+<!-- Correct closing tag -->
