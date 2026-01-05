@@ -1,53 +1,99 @@
-/* Add to your CSS file */
-.sapUiResponsiveContentPadding {
-    padding: 1rem;
+/* Modern Panel Styling */
+.modern-panel {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
 }
 
-/* Responsive adjustments */
+/* Compact Input Fields */
+.compact-input {
+    min-height: 32px;
+    font-size: 0.875rem;
+}
+
+.compact-input.readonly {
+    background-color: #f9f9f9;
+    border-color: #e0e0e0;
+    color: #666;
+}
+
+/* Description Text */
+.description-text {
+    color: #32363a;
+    font-style: italic;
+    min-height: 20px;
+    padding: 4px 8px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    border-left: 3px solid #0a6ed1;
+}
+
+.description-compact {
+    color: #666;
+    font-size: 0.8125rem;
+    min-height: 18px;
+    padding: 2px 6px;
+    background-color: #f5f5f5;
+    border-radius: 3px;
+}
+
+/* Field Labels */
+.field-label {
+    font-size: 0.8125rem;
+    color: #666;
+    margin-bottom: 2px;
+}
+
+/* Compact Buttons */
+.compact-button {
+    min-height: 32px;
+    font-size: 0.875rem;
+}
+
+/* Readonly Field Styling */
+.readonly-field {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    color: #495057;
+}
+
+/* Status Message Area */
+.status-message {
+    width: 450px;
+    transition: all 0.3s ease;
+}
+
+/* Responsive Adjustments */
 @media (max-width: 600px) {
-    .sapUiLargeMargin {
-        margin: 1rem !important;
+    .modern-panel {
+        width: 100% !important;
+        margin: 8px;
     }
     
-    .sapUiMediumMarginTop {
-        margin-top: 0.5rem !important;
-    }
-}
-
-/* Description styling */
-.description-textarea {
-    background-color: #f7f7f7;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 8px;
-    min-height: 60px;
-}
-
-.description-area {
-    background-color: #f9f9f9;
-    padding: 8px 12px;
-    border-radius: 4px;
-    border-left: 3px solid #0a6ed1;
-    min-height: 40px;
-    display: flex;
-    align-items: center;
-}
-
-.section-title {
-    font-weight: bold;
-    color: #333;
-    font-size: 1rem;
-}
-
-/* Ensure buttons are responsive */
-.sapMBtn {
-    min-width: 100px;
-}
-
-/* Make grid items stack on mobile */
-@media (max-width: 1024px) {
-    .responsive-grid-item {
+    .compact-input {
         width: 100% !important;
-        margin-bottom: 1rem;
+    }
+    
+    .status-message {
+        width: 100% !important;
     }
 }
+
+/* Hover Effects */
+.compact-input:hover:not(.readonly) {
+    border-color: #0a6ed1;
+}
+
+.compact-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Focus States */
+.compact-input:focus {
+    outline: none;
+    border-color: #0a6ed1;
+    box-shadow: 0 0 0 2px rgba(10, 110, 209, 0.1);
+}
+

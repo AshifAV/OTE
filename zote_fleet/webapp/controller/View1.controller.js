@@ -11,57 +11,53 @@ sap.ui.define([
 
     return Controller.extend("zotefleet.controller.View1", {
         onInit: function () {
-            // Initialize form validation model
             this._initFormValidation();
         },
 
-        _initFormValidation: function() {
-            // Create a JSON model for form validation
+        _initFormValidation: function () {
             var oFormModel = new JSONModel({
                 isFormValid: false,
                 equipmentSelected: false,
                 plateNumberEntered: false
             });
-            
+
             this.getView().setModel(oFormModel, "form");
-            
-            // Bind validation to input changes
+
             var oEquipment = this.byId("idEquipment");
             var oPlateNumber = this.byId("idPlateNumber");
-            
+
             if (oEquipment && oPlateNumber) {
-                oEquipment.attachChange(function(oEvent) {
+                oEquipment.attachChange(function (oEvent) {
                     this._onEquipmentChange(oEvent);
                 }.bind(this));
-                
-                oPlateNumber.attachChange(function(oEvent) {
+
+                oPlateNumber.attachChange(function (oEvent) {
                     this._onPlateNumberChange(oEvent);
                 }.bind(this));
             }
         },
 
-        _onEquipmentChange: function(oEvent) {
+        _onEquipmentChange: function (oEvent) {
             var sValue = oEvent.getSource().getValue();
             var oFormModel = this.getView().getModel("form");
             oFormModel.setProperty("/equipmentSelected", !!sValue);
             this._validateForm();
         },
 
-        _onPlateNumberChange: function(oEvent) {
+        _onPlateNumberChange: function (oEvent) {
             var sValue = oEvent.getSource().getValue();
             var oFormModel = this.getView().getModel("form");
             oFormModel.setProperty("/plateNumberEntered", !!sValue);
             this._validateForm();
         },
 
-        _validateForm: function() {
+        _validateForm: function () {
             var oFormModel = this.getView().getModel("form");
             var bEquipmentSelected = oFormModel.getProperty("/equipmentSelected");
             var bPlateNumberEntered = oFormModel.getProperty("/plateNumberEntered");
-            
+
             oFormModel.setProperty("/isFormValid", bEquipmentSelected && bPlateNumberEntered);
-            
-            // Also update button directly as backup
+
             var oUpdateButton = this.byId("updateButton");
             if (oUpdateButton) {
                 oUpdateButton.setEnabled(bEquipmentSelected && bPlateNumberEntered);
@@ -72,7 +68,7 @@ sap.ui.define([
             var oInput = oEvent.getSource();
 
             if (!this._oValueHelpDialog) {
-                // SearchField with server-side search
+
                 var oSearchField = new sap.m.SearchField({
                     placeholder: "Search Equipment or Description...",
                     search: this._onSearch.bind(this),
@@ -120,7 +116,6 @@ sap.ui.define([
                     ]
                 });
 
-                // Initial binding without filters
                 oTable.bindItems({
                     path: "/EquipmentSet",
                     parameters: {
@@ -132,23 +127,19 @@ sap.ui.define([
                 this._oValueHelpDialog.setTable(oTable);
                 this._oValueHelpDialog.getTable().setModel(this.getView().getModel());
 
-                // Store the table reference for later filtering
                 this._oVHDTable = oTable;
                 this._oVHDSearchField = oSearchField;
                 this._sLastSearchValue = "";
 
-                // Dialog size
                 this._oValueHelpDialog.setContentWidth("650px");
                 this._oValueHelpDialog.setContentHeight("650px");
 
                 this.getView().addDependent(this._oValueHelpDialog);
             }
 
-            // Clear previous search and show all items on open
             this._oVHDSearchField.setValue("");
             this._sLastSearchValue = "";
 
-            // Reset to initial state
             var oBinding = this._oVHDTable.getBinding("items");
             if (oBinding) {
                 oBinding.filter([]);
@@ -156,7 +147,6 @@ sap.ui.define([
                 oBinding.refresh();
             }
 
-            // Make sure growing is enabled
             this._oVHDTable.setGrowing(true);
 
             this._oValueHelpDialog.open();
@@ -166,27 +156,19 @@ sap.ui.define([
             var aTokens = oEvt.getParameter("tokens");
             if (aTokens && aTokens.length > 0) {
                 var sEqunr = aTokens[0].getKey();
-                var sDescription = aTokens[0].getText();
-
-                // Always remove leading zeros → external format
+                var sFullText = aTokens[0].getText();
                 var sEqunrClean = sEqunr.replace(/^0+/, '') || "0";
-
-                // Display clean value and description
+                var sDescription = this._extractDescription(sFullText, sEqunr);
                 this.byId("idEquipment").setValue(sEqunrClean);
-                this.byId("idEquipmentDescription").setValue(sDescription || "No description available");
-                
-                // Trigger form validation
-                this._onEquipmentChange({getSource: function() { 
-                    return {getValue: function() { return sEqunrClean; }} 
-                }});
-                
-                MessageToast.show("Equipment selected: " + sEqunrClean);
-
-                // Load Fleet data with $expand
+                this.byId("idEquipmentDescription").setText(sDescription || "No description available");
+                this._onEquipmentChange({
+                    getSource: function () {
+                        return { getValue: function () { return sEqunrClean; } }
+                    }
+                });
                 this._loadFleetData(sEqunrClean);
             }
 
-            // Close the dialog
             if (this._oValueHelpDialog) {
                 this._oValueHelpDialog.close();
             }
@@ -196,7 +178,6 @@ sap.ui.define([
             var sPath = "/EquipmentSet('" + sEquipment + "')";
             var oModel = this.getView().getModel();
 
-            // Use $expand parameter properly
             oModel.read(sPath, {
                 urlParameters: {
                     "$expand": "ToFleet"
@@ -207,13 +188,11 @@ sap.ui.define([
                         this.byId("idVIN").setValue(oFleet.FLEET_VIN || "");
                         this.byId("idChassis").setValue(oFleet.CHASSIS_NUM || "");
                         this.byId("idPlateNumber").setValue(oFleet.LICENSE_NUM || "");
-                        
-                        // Trigger plate number validation
-                        this._onPlateNumberChange({getSource: function() { 
-                            return {getValue: function() { return oFleet.LICENSE_NUM || ""; }} 
-                        }});
-                        
-                        MessageToast.show("Fleet details loaded successfully");
+                        this._onPlateNumberChange({
+                            getSource: function () {
+                                return { getValue: function () { return oFleet.LICENSE_NUM || ""; } }
+                            }
+                        });
                     } else {
                         MessageToast.show("No Fleet data found for this equipment");
                         this._clearFleetFields();
@@ -228,14 +207,12 @@ sap.ui.define([
         },
 
         onUpdatePress: function () {
-            // Get current values
             var sEquipment = this.byId("idEquipment").getValue();
-            var sDescription = this.byId("idEquipmentDescription").getValue();
+            var sDescription = this.byId("idEquipmentDescription").getText();
             var sVIN = this.byId("idVIN").getValue();
             var sChassis = this.byId("idChassis").getValue();
             var sPlateNumber = this.byId("idPlateNumber").getValue();
 
-            // Validate input
             if (!sEquipment) {
                 MessageBox.error("Please select an equipment first");
                 return;
@@ -246,7 +223,6 @@ sap.ui.define([
                 return;
             }
 
-            // Show confirmation dialog
             MessageBox.confirm(
                 "Are you sure you want to update the plate number for Equipment " +
                 sEquipment + "?\n\n" +
@@ -266,7 +242,6 @@ sap.ui.define([
             var oModel = this.getView().getModel();
             var sPath = "/FleetSet('" + sEquipment + "')";
 
-            // Prepare the update payload
             var oPayload = {
                 EQUNR: sEquipment,
                 FLEET_VIN: sVIN || "",
@@ -274,37 +249,21 @@ sap.ui.define([
                 LICENSE_NUM: sPlateNumber
             };
 
-            // Show loading indicator
             sap.ui.core.BusyIndicator.show(0);
 
-            // Update using PATCH method
             oModel.update(sPath, oPayload, {
                 success: function (oData) {
                     sap.ui.core.BusyIndicator.hide();
                     MessageToast.show("Plate number updated successfully!");
-
-                    // Optional: Refresh the data to show updated values
+                    this._showStatusMessage("Update completed successfully", "Success");
                     this._loadFleetData(sEquipment);
-
-                    // Log success
                     console.log("Update successful:", oData);
                 }.bind(this),
                 error: function (oError) {
                     sap.ui.core.BusyIndicator.hide();
-
-                    // Check if it's a "not found" error (record doesn't exist)
-                    if (oError.statusCode === "404") {
-                        // Try to create new record instead
-                        this._createFleetData(sEquipment, sVIN, sChassis, sPlateNumber);
-                    } else {
-                        MessageBox.error(
-                            "Error updating plate number: " +
-                            (oError.message || "Unknown error")
-                        );
-                        console.error("Update error:", oError);
-                    }
+                    this._showStatusMessage("Update failed:Error");
                 }.bind(this),
-                merge: false  // Send complete entity, not just changed fields
+                merge: false
             });
         },
 
@@ -313,15 +272,13 @@ sap.ui.define([
             this.byId("idVIN").setValue("");
             this.byId("idChassis").setValue("");
             this.byId("idPlateNumber").setValue("");
-            
-            // Update validation state
             var oFormModel = this.getView().getModel("form");
             oFormModel.setProperty("/plateNumberEntered", false);
             this._validateForm();
         },
 
         onClearPress: function () {
-            // Show confirmation before clearing
+
             MessageBox.confirm(
                 "Are you sure you want to clear all fields?",
                 {
@@ -329,14 +286,13 @@ sap.ui.define([
                     onClose: function (sAction) {
                         if (sAction === MessageBox.Action.OK) {
                             this.byId("idEquipment").setValue("");
-                            this.byId("idEquipmentDescription").setValue("No equipment selected");
+                            this.byId("idEquipmentDescription").setText("No equipment selected");
                             this._clearFleetFields();
-                            
-                            // Update validation state
+
                             var oFormModel = this.getView().getModel("form");
                             oFormModel.setProperty("/equipmentSelected", false);
                             oFormModel.setProperty("/isFormValid", false);
-                            
+
                             MessageToast.show("All fields cleared");
                         }
                     }.bind(this)
@@ -390,6 +346,32 @@ sap.ui.define([
         formatEqunrNoLeadingZeros: function (sValue) {
             if (!sValue) return "";
             return sValue.replace(/^0+/, '') || "0";
+        },
+
+        _showStatusMessage: function (sMessage, sType) {
+            var oStatusArea = this.byId("statusArea");
+            var oMessageStrip = this.byId("statusMessage");
+
+            if (oStatusArea && oMessageStrip) {
+                oMessageStrip.setText(sMessage);
+                oMessageStrip.setType(sType);
+                oStatusArea.setVisible(true);
+            }
+        },
+
+        _extractDescription: function (sFullText, sEqunr) {
+            if (!sFullText || !sEqunr) {
+                return sFullText || "";
+            }
+
+            var sEqunrPattern = "\\s*\\(" + sEqunr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "\\)$";
+            var sDescription = sFullText.replace(new RegExp(sEqunrPattern), "");
+
+
+            sDescription = sDescription.trim();
+
+            return sDescription || sFullText;
         }
+
     });
 });
