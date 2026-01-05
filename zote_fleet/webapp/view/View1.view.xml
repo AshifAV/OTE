@@ -1,0 +1,145 @@
+<mvc:View
+    controllerName="zotefleet.controller.View1"
+    xmlns="sap.m"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns:layout="sap.ui.layout"
+    xmlns:core="sap.ui.core"
+    displayBlock="true"
+>
+    <App>
+        <pages>
+            <Page
+                title="Update Registration Number"
+                showNavButton="false"
+                class="sapUiResponsiveContentPadding"
+            >
+                <content>
+                    <layout:VerticalLayout
+                        width="100%"
+                        class="sapUiLargeMargin"
+                    >
+                        <layout:Grid 
+                            containerQuery="true"
+                            position="Center"
+                            defaultSpan="XL4 L6 M8 S12"
+                        >
+                            <Panel
+                                headerText="Vehicle Details"
+                                expandable="false"
+                                width="100%"
+                            >
+                                <content>
+                                    <VBox class="sapUiMediumMargin">
+                                        <!-- Equipment Section -->
+                                        <VBox class="sapUiSmallMarginBottom">
+                                            <Label 
+                                                text="Equipment" 
+                                                required="true"
+                                                labelFor="idEquipment"
+                                                class="sapUiTinyMarginBottom"
+                                            />
+                                            <Input
+                                                id="idEquipment"
+                                                valueHelpRequest=".onEquipmentValueHelp"
+                                                valueHelpOnly="true"
+                                                showValueHelp="true"
+                                                width="100%"
+                                                placeholder="Click to select..."
+                                                valueStateText="Please select an equipment"
+                                                change=".onEquipmentChange"
+                                            />
+                                        </VBox>
+
+                                        <!-- Description Section -->
+                                        <VBox class="sapUiSmallMarginBottom">
+                                            <Label 
+                                                text="Description"
+                                                labelFor="idEquipmentDescription"
+                                                class="sapUiTinyMarginBottom"
+                                            />
+                                            <TextArea
+                                                id="idEquipmentDescription"
+                                                value="No equipment selected"
+                                                editable="false"
+                                                rows="2"
+                                                width="100%"
+                                                growing="true"
+                                                growingMaxLines="4"
+                                                class="description-textarea"
+                                            />
+                                        </VBox>
+
+                                        <!-- Fleet Details -->
+                                        <layout:Grid
+                                            defaultSpan="XL12 L12 M12 S12"
+                                            class="sapUiSmallMarginTop"
+                                        >
+                                            <VBox class="sapUiSmallMarginBottom">
+                                                <Label text="VIN" 
+                                                       labelFor="idVIN"
+                                                       class="sapUiTinyMarginBottom"/>
+                                                <Input id="idVIN" 
+                                                       editable="false" 
+                                                       width="100%"/>
+                                            </VBox>
+
+                                            <VBox class="sapUiSmallMarginBottom">
+                                                <Label text="Chassis" 
+                                                       labelFor="idChassis"
+                                                       class="sapUiTinyMarginBottom"/>
+                                                <Input id="idChassis" 
+                                                       editable="false" 
+                                                       width="100%"/>
+                                            </VBox>
+
+                                            <VBox class="sapUiSmallMarginBottom">
+                                                <Label text="Plate Number" 
+                                                       required="true"
+                                                       labelFor="idPlateNumber"
+                                                       class="sapUiTinyMarginBottom"/>
+                                                <Input id="idPlateNumber" 
+                                                       width="100%"
+                                                       placeholder="Enter plate number..."
+                                                       valueStateText="Please enter a plate number"
+                                                       change=".onPlateNumberChange"/>
+                                            </VBox>
+                                        </layout:Grid>
+
+                                        <!-- Buttons -->
+                                        <HBox 
+                                            justifyContent="Center"
+                                            class="sapUiMediumMarginTop"
+                                        >
+                                            <layout:Grid
+                                                defaultSpan="XL6 L6 M6 S12"
+                                                hSpacing="1"
+                                            >
+                                                <Button
+                                                    id="updateButton"
+                                                    text="Update"
+                                                    press=".onUpdatePress"
+                                                    type="Accept"
+                                                    width="100%"
+                                                    icon="sap-icon://save"
+                                                    class="sapUiSmallMarginEnd"
+                                                    enabled="{= ${/isFormValid} === true }"
+                                                />
+                                                <Button
+                                                    text="Clear"
+                                                    press=".onClearPress"
+                                                    type="Reject"
+                                                    width="100%"
+                                                    icon="sap-icon://decline"
+                                                />
+                                            </layout:Grid>
+                                        </HBox>
+                                    </VBox>
+                                </content>
+                            </Panel>
+                        </layout:Grid>
+                    </layout:VerticalLayout>
+                </content>
+            </Page>
+        </pages>
+    </App>
+</mvc:View>

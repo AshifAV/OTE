@@ -1,0 +1,53 @@
+/* Add to your CSS file */
+.sapUiResponsiveContentPadding {
+    padding: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .sapUiLargeMargin {
+        margin: 1rem !important;
+    }
+    
+    .sapUiMediumMarginTop {
+        margin-top: 0.5rem !important;
+    }
+}
+
+/* Description styling */
+.description-textarea {
+    background-color: #f7f7f7;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px;
+    min-height: 60px;
+}
+
+.description-area {
+    background-color: #f9f9f9;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border-left: 3px solid #0a6ed1;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+}
+
+.section-title {
+    font-weight: bold;
+    color: #333;
+    font-size: 1rem;
+}
+
+/* Ensure buttons are responsive */
+.sapMBtn {
+    min-width: 100px;
+}
+
+/* Make grid items stack on mobile */
+@media (max-width: 1024px) {
+    .responsive-grid-item {
+        width: 100% !important;
+        margin-bottom: 1rem;
+    }
+}

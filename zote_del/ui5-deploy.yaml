@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://sap.github.io/ui5-tooling/schema/ui5.yaml.json
+
+specVersion: "4.0"
+metadata:
+  name: zotedel
+type: application
+builder:
+  resources:
+    excludes:
+      - /test/**
+      - /localService/**
+  customTasks:
+    - name: deploy-to-abap
+      afterTask: generateCachebusterInfo
+      configuration:
+        target:
+          destination: DS4
+          url: https://vhotgws1wd01.sap.otegroup.com:44380/
+          client: '050'
+        app:
+          name: ZOTE_DEL
+          description: Delivery Update Application
+          package: ZOTE_ABAP
+          transport: DS4K924837
+        exclude:
+          - /test/

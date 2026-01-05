@@ -1,0 +1,24 @@
+{
+  "generationParameters": {
+    "generationDate": "Thu Jan 01 2026 05:09:22 GMT+0000 (Coordinated Universal Time)",
+    "generatorPlatform": "SAP Business Application Studio",
+    "serviceType": "SAP System (ABAP On-Premise)",
+    "metadataFilename": "",
+    "serviceUrl": "http://otegroup.server.com:44380/sap/opu/odata/sap/ZOTE_FLEETUPD_SRV",
+    "appName": "zote_fleet",
+    "appTitle": "Fleet Management",
+    "appDescription": "Application For Fleet Management",
+    "appNamespace": "",
+    "ui5Theme": "sap_horizon",
+    "ui5Version": "1.108.30",
+    "enableCodeAssist": false,
+    "enableEslint": false,
+    "enableTypeScript": false,
+    "showMockDataInfo": true,
+    "generatorVersion": "1.20.0",
+    "template": "Basic V2",
+    "generatorName": "SAP Fiori Application Generator",
+    "entityRelatedConfig": [],
+    "launchText": "To launch the generated application, run the following from the generated application root folder:\n\n```\n    npm start\n```"
+  }
+}

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="1.0" xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata" xmlns:sap="http://www.sap.com/Protocols/SAPData">
+    <edmx:DataServices m:DataServiceVersion="2.0">
+        <Schema Namespace="ZOTE_FLEETUPD_SRV" xml:lang="en" sap:schema-version="1" xmlns="http://schemas.microsoft.com/ado/2008/09/edm">
+            <Annotation Term="Core.SchemaVersion" String="1.0.0" xmlns="http://docs.oasis-open.org/odata/ns/edm"/>
+            <EntityType Name="Equipment" sap:content-version="1">
+                <Key>
+                    <PropertyRef Name="OBJNR"/>
+                </Key>
+                <Property Name="EQUNR" Type="Edm.String" Nullable="false" sap:unicode="false" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="EQART" Type="Edm.String" Nullable="false" sap:unicode="false" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="EQTYP" Type="Edm.String" Nullable="false" sap:unicode="false" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="MATNR" Type="Edm.String" Nullable="false" sap:unicode="false" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="SERNR" Type="Edm.String" Nullable="false" sap:unicode="false" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="DESCR" Type="Edm.String" Nullable="false" sap:unicode="false" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="OBJNR" Type="Edm.String" Nullable="false" sap:unicode="false" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <NavigationProperty Name="ToFleet" Relationship="ZOTE_FLEETUPD_SRV.EquipToFleet" FromRole="FromRole_EquipToFleet" ToRole="ToRole_EquipToFleet"/>
+            </EntityType>
+            <EntityType Name="Fleet" sap:content-version="1">
+                <Key>
+                    <PropertyRef Name="OBJNR"/>
+                </Key>
+                <Property Name="OBJNR" Type="Edm.String" Nullable="false" sap:unicode="false" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="FLEET_VIN" Type="Edm.String" Nullable="false" sap:unicode="false" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="CHASSIS_NUM" Type="Edm.String" Nullable="false" sap:unicode="false" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+                <Property Name="LICENSE_NUM" Type="Edm.String" Nullable="false" sap:unicode="false" sap:creatable="false" sap:updatable="false" sap:sortable="false" sap:filterable="false"/>
+            </EntityType>
+            <Association Name="EquipToFleet" sap:content-version="1">
+                <End Type="ZOTE_FLEETUPD_SRV.Equipment" Multiplicity="1" Role="FromRole_EquipToFleet"/>
+                <End Type="ZOTE_FLEETUPD_SRV.Fleet" Multiplicity="*" Role="ToRole_EquipToFleet"/>
+                <ReferentialConstraint>
+                    <Principal Role="FromRole_EquipToFleet">
+                        <PropertyRef Name="OBJNR"/>
+                    </Principal>
+                    <Dependent Role="ToRole_EquipToFleet">
+                        <PropertyRef Name="OBJNR"/>
+                    </Dependent>
+                </ReferentialConstraint>
+            </Association>
+            <EntityContainer Name="ZOTE_FLEETUPD_SRV_Entities" m:IsDefaultEntityContainer="true" sap:supported-formats="atom json xlsx">
+                <EntitySet Name="EquipmentSet" EntityType="ZOTE_FLEETUPD_SRV.Equipment" sap:creatable="false" sap:updatable="false" sap:deletable="false" sap:pageable="false" sap:addressable="false" sap:content-version="1"/>
+                <EntitySet Name="FleetSet" EntityType="ZOTE_FLEETUPD_SRV.Fleet" sap:creatable="false" sap:updatable="false" sap:deletable="false" sap:pageable="false" sap:addressable="false" sap:content-version="1"/>
+                <AssociationSet Name="EquipToFleet_AssocSet" Association="ZOTE_FLEETUPD_SRV.EquipToFleet" sap:creatable="false" sap:updatable="false" sap:deletable="false" sap:content-version="1">
+                    <End EntitySet="EquipmentSet" Role="FromRole_EquipToFleet"/>
+                    <End EntitySet="FleetSet" Role="ToRole_EquipToFleet"/>
+                </AssociationSet>
+            </EntityContainer>
+            <atom:link rel="self" href="https://otegroup.server.com:44380/sap/opu/odata/sap/ZOTE_FLEETUPD_SRV/$metadata" xmlns:atom="http://www.w3.org/2005/Atom"/>
+            <atom:link rel="latest-version" href="https://otegroup.server.com:44380/sap/opu/odata/sap/ZOTE_FLEETUPD_SRV/$metadata" xmlns:atom="http://www.w3.org/2005/Atom"/>
+        </Schema>
+    </edmx:DataServices>
+</edmx:Edmx>

@@ -1,0 +1,60 @@
+{
+  "fileName": "manifest",
+  "layer": "CUSTOMER_BASE",
+  "fileType": "appdescr_variant",
+  "reference": "com.globalintelli.zae_ssod",
+  "id": "customer.zotessod",
+  "namespace": "apps/com.globalintelli.zae_ssod/appVariants/customer.zotessod/",
+  "version": "0.1.0",
+  "content": [
+    {
+      "changeType": "appdescr_ui5_addNewModelEnhanceWith",
+      "content": {
+        "modelId": "i18n"
+      },
+      "texts": {
+        "i18n": "i18n/i18n.properties"
+      }
+    },
+    {
+      "changeType": "appdescr_ui5_addNewModelEnhanceWith",
+      "content": {
+        "modelId": "@i18n"
+      },
+      "texts": {
+        "i18n": "i18n/i18n.properties"
+      }
+    },
+    {
+      "changeType": "appdescr_ui5_addNewModelEnhanceWith",
+      "content": {
+        "modelId": "i18n|sap.suite.ui.generic.template.ListReport|ZAE_C_ServiceOrder_01"
+      },
+      "texts": {
+        "i18n": "i18n/ListReport/ZAE_C_ServiceOrder_01/i18n.properties"
+      }
+    },
+    {
+      "changeType": "appdescr_ui5_addNewModelEnhanceWith",
+      "content": {
+        "modelId": "i18n|sap.suite.ui.generic.template.ObjectPage|ZAE_C_ServiceOrder_01"
+      },
+      "texts": {
+        "i18n": "i18n/ObjectPage/ZAE_C_ServiceOrder_01/i18n.properties"
+      }
+    },
+    {
+      "changeType": "appdescr_ui5_setMinUI5Version",
+      "content": {
+        "minUI5Version": "1.108.30"
+      }
+    },
+    {
+      "changeType": "appdescr_app_setTitle",
+      "content": {},
+      "texts": {
+        "i18n": "i18n/i18n.properties"
+      }
+    }
+  ]
+}
