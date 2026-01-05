@@ -101,7 +101,7 @@ sap.ui.define([
 						new sap.ui.model.Filter("InvoiceNo", "EQ", sInvoice)
 					]);
 
-					oBinding.resume();  
+					oBinding.resume();
 					this._oViewModel.setProperty("/InvoiceNo", sInvoice);
 					MessageToast.show("Invoice " + sInvoice + " is valid");
 
@@ -131,6 +131,59 @@ sap.ui.define([
 		_clearError: function () {
 			var oStrip = this.byId("msgStrip");
 			if (oStrip) oStrip.setVisible(false);
+		},
+
+		onUpdateSelected: function () {
+			var oTable = this.byId("idDeliveryTable");
+			var aSelectedItems = oTable.getSelectedItems();
+
+			if (aSelectedItems.length === 0) {
+				MessageToast.show("Please select at least one item to update");
+				return;
+			}
+
+			var sInvoice = this._oViewModel.getProperty("/InvoiceNo").padStart(10, "0");
+
+			var aItemNos = aSelectedItems.map(function (oItem) {
+				var oContext = oItem.getBindingContext();  
+				return oContext.getProperty("ItemNo");     
+			});
+
+			var sSelectedItemNos = aItemNos.join(",");
+
+			var oModel = this.getOwnerComponent().getModel();
+
+			this.getView().setBusy(true);
+
+			oModel.callFunction("/FM_UpdateMfrgr", {
+				method: "POST",
+				urlParameters: {
+					InvoiceNo: sInvoice,
+					SelectedItemNos: sSelectedItemNos
+				},
+				success: function (oData, oResponse) {
+					this.getView().setBusy(false);
+
+					var sMsg = "Successfully updated " + aSelectedItems.length + " item(s) ";
+					MessageToast.show(sMsg);
+					oTable.getBinding("items").refresh(true);
+					oTable.removeSelections(true);
+				}.bind(this),
+				error: function (oError) {
+					this.getView().setBusy(false);
+					var sMsg = "Update failed";
+
+					if (oError.responseText) {
+						try {
+							var oResp = JSON.parse(oError.responseText);
+							sMsg = oResp.error.message.value || sMsg;
+						} catch (e) {
+							sMsg = oError.message || sMsg;
+						}
+					}
+					MessageToast.show(sMsg);
+				}.bind(this)
+			});
 		}
 	});
 });
