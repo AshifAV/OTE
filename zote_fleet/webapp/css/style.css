@@ -97,3 +97,63 @@
     box-shadow: 0 0 0 2px rgba(10, 110, 209, 0.1);
 }
 
+.search-section {
+    padding: 1rem;
+    background-color: #f7f7f7;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.search-field {
+    flex: 1;
+    margin-right: 2rem;
+}
+
+.search-field:last-child {
+    margin-right: 0;
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.equipment-table {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.status-section {
+    padding-top: 1rem;
+    border-top: 1px solid #ddd;
+}
+
+.status-message {
+    max-width: 500px;
+}
+
+.field-label {
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+}
+
+/* Make table inputs more compact */
+.sapMInput {
+    height: 2rem;
+    font-size: 0.875rem;
+}
+
+/* Panel styling */
+.modern-panel .sapMPanelContent {
+    padding: 0 !important;
+}
+
+/* Button spacing */
+.sapMBtn {
+    margin-right: 0.5rem;
+}
+
+.sapMBtn:last-child {
+    margin-right: 0;
+}

@@ -3,122 +3,272 @@
     xmlns="sap.m"
     xmlns:mvc="sap.ui.core.mvc"
     xmlns:layout="sap.ui.layout"
-    xmlns:f="sap.f"
     xmlns:core="sap.ui.core"
     displayBlock="true"
 >
     <App>
         <pages>
             <Page
-                title="Update Registration"
+                title="Fleet Management - Update Registration"
                 showNavButton="false"
                 class="sapUiNoContentPadding"
             >
                 <content>
-                    <!-- Compact Container -->
+                    <!-- Main Container -->
                     <VBox alignItems="Center" class="sapUiMediumMargin">
+                        <!-- Main Panel -->
                         <Panel
-                            headerText="Update Vehicle Registration"
+                            headerText="Vehicle Registration Update"
                             expandable="false"
-                            width="450px"
+                            width="1000px"
                             class="modern-panel"
                         >
                             <content>
                                 <VBox class="sapUiSmallMargin">
-                                    <!-- Equipment Selection -->
-                                    <VBox class="sapUiTinyMarginBottom">
-                                        <Label text="Equipment" required="true" 
-                                               design="Bold" class="sapUiTinyMarginBottom"/>
-                                        <HBox alignItems="Center">
-                                            <Input
-                                                id="idEquipment"
-                                                valueHelpRequest=".onEquipmentValueHelp"
-                                                valueHelpOnly="true"
-                                                showValueHelp="true"
-                                                width="200px"
-                                                placeholder="Select equipment"
-                                                class="sapUiSmallMarginEnd compact-input"
+                                    <!-- Search Section -->
+                                    <HBox alignItems="Center" justifyContent="SpaceBetween" 
+                                          class="sapUiSmallMarginBottom search-section">
+                                        <VBox class="search-field">
+                                            <Label text="Customer" 
+                                                   design="Bold" class="sapUiTinyMarginBottom"/>
+                                            <HBox alignItems="Center">
+                                                <Input
+                                                    id="idCustomer"
+                                                    valueHelpRequest=".onCustomerValueHelp"
+                                                    valueHelpOnly="true"
+                                                    showValueHelp="true"
+                                                    width="180px"
+                                                    placeholder="Select customer"
+                                                    class="sapUiSmallMarginEnd"
+                                                    change=".onCustomerChange"
+                                                />
+                                                <core:Icon
+                                                    src="sap-icon://value-help"
+                                                    size="1.25rem"
+                                                    color="#0a6ed1"
+                                                    class="sapUiTinyMarginBegin"
+                                                />
+                                            </HBox>
+                                            <Text
+                                                id="idCustomerName"
+                                                text="No customer selected"
+                                                wrapping="true"
+                                                class="sapUiTinyMarginTop"
                                             />
-                                            <core:Icon
-                                                src="sap-icon://value-help"
-                                                size="1.25rem"
-                                                color="#0a6ed1"
-                                                class="sapUiTinyMarginBegin"
+                                        </VBox>
+                                        
+                                        <VBox class="search-field">
+                                            <Label text="Equipment" 
+                                                   design="Bold" class="sapUiTinyMarginBottom"/>
+                                            <HBox alignItems="Center">
+                                                <Input
+                                                    id="idEquipment"
+                                                    valueHelpRequest=".onEquipmentValueHelp"
+                                                    valueHelpOnly="true"
+                                                    showValueHelp="true"
+                                                    width="180px"
+                                                    placeholder="Select equipment"
+                                                    class="sapUiSmallMarginEnd"
+                                                    change=".onEquipmentChange"
+                                                />
+                                                <core:Icon
+                                                    src="sap-icon://value-help"
+                                                    size="1.25rem"
+                                                    color="#0a6ed1"
+                                                    class="sapUiTinyMarginBegin"
+                                                />
+                                            </HBox>
+                                            <Text
+                                                id="idEquipmentDescription"
+                                                text="No equipment selected"
+                                                wrapping="true"
+                                                class="sapUiTinyMarginTop"
                                             />
-                                        </HBox>
-                                        <Text
-                                            id="idEquipmentDescription"
-                                            text=""
-                                            wrapping="true"
-                                            class="sapUiTinyMarginTop description-compact"
-                                        />
+                                        </VBox>
+                                        
+                                        <VBox class="search-field">
+                                            <Label text="VIN/Chassis Number" 
+                                                   design="Bold" class="sapUiTinyMarginBottom"/>
+                                            <HBox alignItems="Center">
+                                                <Input
+                                                    id="idVINSearch"
+                                                    valueHelpRequest=".onVINValueHelp"
+                                                    valueHelpOnly="true"
+                                                    showValueHelp="true"
+                                                    width="180px"
+                                                    placeholder="Search by VIN"
+                                                    class="sapUiSmallMarginEnd"
+                                                    change=".onVINChange"
+                                                />
+                                                <core:Icon
+                                                    src="sap-icon://value-help"
+                                                    size="1.25rem"
+                                                    color="#0a6ed1"
+                                                    class="sapUiTinyMarginBegin"
+                                                />
+                                            </HBox>
+                                            <Text
+                                                id="idVINDescription"
+                                                text="Search by VIN/Chassis number"
+                                                wrapping="true"
+                                                class="sapUiTinyMarginTop"
+                                            />
+                                        </VBox>
+                                        
+                                        <VBox class="action-buttons">
+                                            <Button
+                                                text="Clear Filters"
+                                                press=".onClearFiltersPress"
+                                                width="120px"
+                                                icon="sap-icon://clear-filter"
+                                                class="sapUiTinyMarginTop"
+                                            />
+                                            <Button
+                                                text="Refresh"
+                                                press=".onRefreshPress"
+                                                width="120px"
+                                                icon="sap-icon://refresh"
+                                                class="sapUiTinyMarginTop"
+                                            />
+                                        </VBox>
+                                    </HBox>
+
+                                    <!-- Table Section -->
+                                    <VBox class="sapUiSmallMarginTop">
+                                        <Table
+                                            id="idEquipmentTable"
+                                            items="{
+                                                path: 'table>/equipmentItems',
+                                                sorter: {
+                                                    path: 'equnr',
+                                                    descending: false
+                                                }
+                                            }"
+                                            mode="SingleSelectMaster"
+                                            selectionChange=".onTableItemPress"
+                                            class="equipment-table"
+                                        >
+                                            <headerToolbar>
+                                                <OverflowToolbar>
+                                                    <Title text="Vehicle Details" level="H2"/>
+                                                    <ToolbarSpacer/>
+                                                    <Label text="Search Mode:" class="sapUiTinyMarginEnd"/>
+                                                    <Select
+                                                        id="idSearchMode"
+                                                        selectedKey="customer"
+                                                        change=".onSearchModeChange"
+                                                        width="140px">
+                                                        <core:Item key="customer" text="Customer"/>
+                                                        <core:Item key="equipment" text="Equipment"/>
+                                                        <core:Item key="vin" text="VIN"/>
+                                                    </Select>
+                                                    <Button 
+                                                        id="idUpdateButton"
+                                                        text="Update Selected"
+                                                        press=".onUpdateSelectedPress"
+                                                        type="Accept"
+                                                        icon="sap-icon://save"
+                                                        enabled="false"
+                                                        class="sapUiTinyMarginBegin"/>
+                                                    <Text text="{= ${table>/equipmentItems}.length || 0 } item(s)"/>
+                                                </OverflowToolbar>
+                                            </headerToolbar>
+                                            <columns>
+                                                <Column width="15%">
+                                                    <Text text="Equipment"/>
+                                                </Column>
+                                                <Column width="20%">
+                                                    <Text text="Description"/>
+                                                </Column>
+                                                <Column width="15%">
+                                                    <Text text="Customer"/>
+                                                </Column>
+                                                <Column width="20%">
+                                                    <Text text="VIN/Chassis"/>
+                                                </Column>
+                                                <Column width="15%">
+                                                    <Text text="Plate Number"/>
+                                                </Column>
+                                            </columns>
+                                            <items>
+                                                <ColumnListItem type="Active">
+                                                    <cells>
+                                                        <Text text="{
+                                                            path: 'table>equnr',
+                                                            formatter: '.formatEquipmentNoLeadingZeros'
+                                                        }"/>
+                                                        <Text text="{table>eqktx}"/>
+                                                        <Text text="{table>name1}"/>
+                                                        <Text text="{table>fleetVin}"/>
+                                                        <Input 
+                                                            value="{table>licenseNum}"
+                                                            change=".onPlateNumberChange"
+                                                            placeholder="Enter plate number"
+                                                            width="100%"
+                                                            editable="{table>editable}"/>
+                                                    </cells>
+                                                </ColumnListItem>
+                                            </items>
+                                            <noData>
+                                                <IllustratedMessage
+                                                    title="No Vehicles Found"
+                                                    description="Select a search criteria to view details"
+                                                    illustrationType="sapIllus-EmptyList">
+                                                    <additionalContent>
+                                                        <Button
+                                                            text="Select Customer"
+                                                            press=".onSelectCustomerHelp"
+                                                            icon="sap-icon://customer"
+                                                            class="sapUiTinyMarginEnd"/>
+                                                        <Button
+                                                            text="Select Equipment"
+                                                            press=".onSelectEquipmentHelp"
+                                                            icon="sap-icon://machine"
+                                                            class="sapUiTinyMarginEnd"/>
+                                                        <Button
+                                                            text="Search by VIN"
+                                                            press=".onSelectVINHelp"
+                                                            icon="sap-icon://search"/>
+                                                    </additionalContent>
+                                                </IllustratedMessage>
+                                            </noData>
+                                        </Table>
                                     </VBox>
 
-                                    <!-- Fleet Details in Compact Grid -->
-                                    <layout:Grid
-                                        defaultSpan="XL12 L12 M12 S12"
-                                        hSpacing="0.5"
-                                        vSpacing="0.5"
-                                        class="sapUiTinyMarginTop"
-                                    >
-                                        <!-- VIN -->
+                                    <!-- Status and Action Section -->
+                                    <HBox justifyContent="SpaceBetween" alignItems="Center" 
+                                          class="sapUiSmallMarginTop status-section">
                                         <VBox>
-                                            <Label text="VIN" class="field-label"/>
-                                            <Input id="idVIN" editable="false" 
-                                                   width="100%" class="compact-input readonly"/>
+                                            <MessageStrip
+                                                id="idStatusMessage"
+                                                type="Information"
+                                                showIcon="true"
+                                                showCloseButton="true"
+                                                visible="false"
+                                                class="status-message"
+                                            />
                                         </VBox>
-
-                                        <!-- Chassis -->
-                                        <VBox>
-                                            <Label text="Chassis" class="field-label"/>
-                                            <Input id="idChassis" editable="false" 
-                                                   width="100%" class="compact-input readonly"/>
-                                        </VBox>
-
-                                        <!-- Plate Number -->
-                                        <VBox>
-                                            <Label text="Plate Number" required="true" class="field-label"/>
-                                            <Input id="idPlateNumber" 
-                                                   width="100%"
-                                                   placeholder="Enter plate number"
-                                                   class="compact-input"/>
-                                        </VBox>
-                                    </layout:Grid>
-
-                                    <!-- Buttons - Compact -->
-                                    <HBox justifyContent="End" class="sapUiSmallMarginTop">
-                                        <Button
-                                            id="updateButton"
-                                            text="Update"
-                                            press=".onUpdatePress"
-                                            type="Accept"
-                                            width="100px"
-                                            icon="sap-icon://save"
-                                            class="sapUiTinyMarginEnd compact-button"
-                                        />
-                                        <Button
-                                            text="Clear"
-                                            press=".onClearPress"
-                                            width="100px"
-                                            icon="sap-icon://clear-all"
-                                            class="compact-button"
-                                        />
+                                        <HBox>
+                                            <Button
+                                                id="idBatchUpdateButton"
+                                                text="Update All Changes"
+                                                press=".onBatchUpdatePress"
+                                                type="Emphasized"
+                                                icon="sap-icon://save"
+                                                enabled="false"
+                                                class="sapUiTinyMarginEnd"
+                                            />
+                                            <Button
+                                                text="Clear All"
+                                                press=".onClearAllPress"
+                                                width="100px"
+                                                icon="sap-icon://delete"
+                                            />
+                                        </HBox>
                                     </HBox>
                                 </VBox>
                             </content>
                         </Panel>
-
-                        <!-- Status Message Area -->
-                        <VBox id="statusArea" visible="false" 
-                              class="sapUiTinyMarginTop status-message">
-                            <MessageStrip
-                                id="statusMessage"
-                                type="Information"
-                                showIcon="true"
-                                showCloseButton="true"
-                                class="sapUiTinyMargin"
-                            />
-                        </VBox>
                     </VBox>
                 </content>
             </Page>
