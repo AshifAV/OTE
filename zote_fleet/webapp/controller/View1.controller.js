@@ -132,7 +132,7 @@ sap.ui.define([
 
         _onCustomerSearch: function (oEvent) {
             var sValue = oEvent.getParameter("query") || oEvent.getParameter("newValue");
-            
+
             if (!this._oCustomerVHTable) return;
 
             var oBinding = this._oCustomerVHTable.getBinding("items");
@@ -141,21 +141,23 @@ sap.ui.define([
             var aFilters = [];
 
             if (sValue && sValue.trim() !== "") {
-                var oFilter1 = new Filter({
+                // Create a combined filter for KUNNR OR NAME1
+                var oFilterKunnr = new Filter({
                     path: "KUNNR",
                     operator: FilterOperator.EQ,
                     value1: sValue
                 });
 
-                var oFilter2 = new Filter({
+                var oFilterName = new Filter({
                     path: "NAME1",
                     operator: FilterOperator.Contains,
                     value1: sValue
                 });
 
+                // Use OR condition
                 aFilters = new Filter({
-                    filters: [oFilter1, oFilter2],
-                    and: false
+                    filters: [oFilterKunnr, oFilterName],
+                    and: false  // This means OR
                 });
 
                 oBinding.filter(aFilters);
@@ -173,19 +175,19 @@ sap.ui.define([
                 var sCustomerName = aTokens[0].getText();
                 sCustomerName = this._extractCustomerName(sCustomerName, sKunnr);
                 var sKunnrClean = sKunnr.replace(/^0+/, '') || "0";
-                
+
                 this.byId("idCustomer").setValue(sKunnrClean);
                 this.byId("idCustomerName").setText(sCustomerName || "No customer name");
-                
+
                 // Clear other filters
                 this.byId("idEquipment").setValue("");
                 this.byId("idEquipmentDescription").setText("No equipment selected");
                 this.byId("idVINSearch").setValue("");
                 this.byId("idVINDescription").setText("Search by VIN number");
-                
+
                 // Set search mode to customer
                 this.byId("idSearchMode").setSelectedKey("customer");
-                
+
                 // Load customer equipment
                 this._loadCustomerEquipment(sKunnrClean);
             }
@@ -293,7 +295,7 @@ sap.ui.define([
 
         _onEquipmentSearch: function (oEvent) {
             var sValue = oEvent.getParameter("query") || oEvent.getParameter("newValue");
-            
+
             if (!this._oEquipmentVHTable) return;
 
             var oBinding = this._oEquipmentVHTable.getBinding("items");
@@ -334,19 +336,19 @@ sap.ui.define([
                 var sFullText = aTokens[0].getText();
                 var sEqunrClean = sEqunr.replace(/^0+/, '') || "0";
                 var sDescription = this._extractDescription(sFullText, sEqunr);
-                
+
                 this.byId("idEquipment").setValue(sEqunrClean);
                 this.byId("idEquipmentDescription").setText(sDescription || "No description available");
-                
+
                 // Clear other filters
                 this.byId("idCustomer").setValue("");
                 this.byId("idCustomerName").setText("No customer selected");
                 this.byId("idVINSearch").setValue("");
                 this.byId("idVINDescription").setText("Search by VIN number");
-                
+
                 // Set search mode to equipment
                 this.byId("idSearchMode").setSelectedKey("equipment");
-                
+
                 // Load single equipment
                 this._loadSingleEquipment(sEqunrClean);
             }
@@ -449,7 +451,7 @@ sap.ui.define([
 
         _onVINSearch: function (oEvent) {
             var sValue = oEvent.getParameter("query") || oEvent.getParameter("newValue");
-            
+
             if (!this._oVINVHTable) return;
 
             var oBinding = this._oVINVHTable.getBinding("items");
@@ -476,19 +478,19 @@ sap.ui.define([
             var aTokens = oEvt.getParameter("tokens");
             if (aTokens && aTokens.length > 0) {
                 var sVIN = aTokens[0].getKey();
-                
+
                 this.byId("idVINSearch").setValue(sVIN);
                 this.byId("idVINDescription").setText("VIN: " + sVIN);
-                
+
                 // Clear other filters
                 this.byId("idCustomer").setValue("");
                 this.byId("idCustomerName").setText("No customer selected");
                 this.byId("idEquipment").setValue("");
                 this.byId("idEquipmentDescription").setText("No equipment selected");
-                
+
                 // Set search mode to VIN
                 this.byId("idSearchMode").setSelectedKey("vin");
-                
+
                 // Load equipment by VIN
                 this._loadEquipmentByVIN(sVIN);
             }
@@ -511,7 +513,7 @@ sap.ui.define([
         // ========== DATA LOADING METHODS ==========
         _loadCustomerEquipment: function (sCustomer) {
             sap.ui.core.BusyIndicator.show(0);
-            
+
             var oModel = this.getView().getModel();
             var sPath = "/CustomerEquipmentSet";
             var aFilters = [
@@ -522,21 +524,21 @@ sap.ui.define([
                 filters: aFilters,
                 success: function (oData) {
                     sap.ui.core.BusyIndicator.hide();
-                    
+
                     var aEquipmentItems = [];
                     var oTableModel = this.getView().getModel("table");
-                    
+
                     if (oData.results && oData.results.length > 0) {
-                        oData.results.forEach(function(oItem) {
+                        oData.results.forEach(function (oItem) {
                             var sOriginalEqunr = oItem.EQUNR || "";
                             var sDisplayEqunr = sOriginalEqunr.replace(/^0+/, '') || "0";
-                            
+
                             aEquipmentItems.push({
                                 equnr: sDisplayEqunr,
                                 originalEqunr: sOriginalEqunr,
                                 eqktx: oItem.EQKTX || "No description",
                                 name1: oItem.NAME1 || "",
-                                fleetVin: oItem.FLEET_VIN|| "",
+                                fleetVin: oItem.FLEET_VIN || "",
                                 chassisNum: oItem.CHASSIS_NUM || "",
                                 licenseNum: oItem.LICENSE_NUM || "",
                                 objnr: oItem.Objnr || "",
@@ -546,28 +548,28 @@ sap.ui.define([
                                 selected: false
                             });
                         });
-                        
+
                         this._showStatusMessage("Loaded " + aEquipmentItems.length + " equipment(s) for customer", "Success");
                     } else {
                         this._showStatusMessage("No equipment found for this customer", "Information");
                     }
-                    
+
                     oTableModel.setProperty("/equipmentItems", aEquipmentItems);
                     oTableModel.setProperty("/changedItems", []);
                     oTableModel.setProperty("/selectedEquipment", null);
-                    
+
                     this._updateUIState();
-                    
+
                 }.bind(this),
                 error: function (oError) {
                     sap.ui.core.BusyIndicator.hide();
                     this._showStatusMessage("Error loading equipment data", "Error");
                     console.error("Error loading equipment:", oError);
-                    
+
                     var oTableModel = this.getView().getModel("table");
                     oTableModel.setProperty("/equipmentItems", []);
                     oTableModel.setProperty("/changedItems", []);
-                    
+
                     this._updateUIState();
                 }.bind(this)
             });
@@ -575,12 +577,12 @@ sap.ui.define([
 
         _loadSingleEquipment: function (sEquipment) {
             sap.ui.core.BusyIndicator.show(0);
-            
+
             var oModel = this.getView().getModel();
-            
+
             // First get equipment details
             var sEquipmentPath = "/EquipmentSet('" + sEquipment + "')";
-            
+
             oModel.read(sEquipmentPath, {
                 success: function (oEquipData) {
                     if (!oEquipData) {
@@ -588,22 +590,22 @@ sap.ui.define([
                         this._showStatusMessage("Equipment not found", "Error");
                         return;
                     }
-                    
+
                     // Now get fleet data for this equipment
                     var sFleetPath = "/FleetSet('" + sEquipment + "')";
-                    
+
                     oModel.read(sFleetPath, {
                         success: function (oFleetData) {
                             sap.ui.core.BusyIndicator.hide();
-                            
+
                             var aEquipmentItems = [];
                             var oTableModel = this.getView().getModel("table");
-                            
+
                             var sOriginalEqunr = oEquipData.EQUNR || sEquipment;
                             var sDisplayEqunr = sOriginalEqunr.replace(/^0+/, '') || "0";
-                            
+
                             // Try to get customer name from CustomerEquipmentSet
-                            this._getCustomerForEquipment(sEquipment, function(sCustomerName) {
+                            this._getCustomerForEquipment(sEquipment, function (sCustomerName) {
                                 var oItem = {
                                     equnr: sDisplayEqunr,
                                     originalEqunr: sOriginalEqunr,
@@ -618,29 +620,29 @@ sap.ui.define([
                                     editable: true,
                                     selected: false
                                 };
-                                
+
                                 aEquipmentItems.push(oItem);
-                                
+
                                 oTableModel.setProperty("/equipmentItems", aEquipmentItems);
                                 oTableModel.setProperty("/changedItems", []);
                                 oTableModel.setProperty("/selectedEquipment", null);
-                                
+
                                 this._updateUIState();
                                 this._showStatusMessage("Loaded equipment " + sDisplayEqunr, "Success");
-                                
+
                             }.bind(this));
-                            
+
                         }.bind(this),
                         error: function (oError) {
                             sap.ui.core.BusyIndicator.hide();
                             // Even if fleet data fails, we can still show equipment
                             var aEquipmentItems = [];
                             var oTableModel = this.getView().getModel("table");
-                            
+
                             var sOriginalEqunr = oEquipData.EQUNR || sEquipment;
                             var sDisplayEqunr = sOriginalEqunr.replace(/^0+/, '') || "0";
-                            
-                            this._getCustomerForEquipment(sEquipment, function(sCustomerName) {
+
+                            this._getCustomerForEquipment(sEquipment, function (sCustomerName) {
                                 var oItem = {
                                     equnr: sDisplayEqunr,
                                     originalEqunr: sOriginalEqunr,
@@ -655,29 +657,29 @@ sap.ui.define([
                                     editable: true,
                                     selected: false
                                 };
-                                
+
                                 aEquipmentItems.push(oItem);
-                                
+
                                 oTableModel.setProperty("/equipmentItems", aEquipmentItems);
                                 oTableModel.setProperty("/changedItems", []);
                                 oTableModel.setProperty("/selectedEquipment", null);
-                                
+
                                 this._updateUIState();
                                 this._showStatusMessage("Loaded equipment (no fleet data found)", "Warning");
                             }.bind(this));
                         }.bind(this)
                     });
-                    
+
                 }.bind(this),
                 error: function (oError) {
                     sap.ui.core.BusyIndicator.hide();
                     this._showStatusMessage("Error loading equipment data", "Error");
                     console.error("Error loading equipment:", oError);
-                    
+
                     var oTableModel = this.getView().getModel("table");
                     oTableModel.setProperty("/equipmentItems", []);
                     oTableModel.setProperty("/changedItems", []);
-                    
+
                     this._updateUIState();
                 }.bind(this)
             });
@@ -685,7 +687,7 @@ sap.ui.define([
 
         _loadEquipmentByVIN: function (sVIN) {
             sap.ui.core.BusyIndicator.show(0);
-            
+
             var oModel = this.getView().getModel();
             var sPath = "/FleetSet";
             var aFilters = [
@@ -696,18 +698,18 @@ sap.ui.define([
                 filters: aFilters,
                 success: function (oData) {
                     sap.ui.core.BusyIndicator.hide();
-                    
+
                     var aEquipmentItems = [];
                     var oTableModel = this.getView().getModel("table");
-                    
+
                     if (oData.results && oData.results.length > 0) {
                         // Should be only one result for VIN search
-                        oData.results.forEach(function(oItem) {
+                        oData.results.forEach(function (oItem) {
                             var sOriginalEqunr = oItem.EQUNR || "";
                             var sDisplayEqunr = sOriginalEqunr.replace(/^0+/, '') || "0";
-                            
+
                             // Try to get equipment description and customer
-                            this._getEquipmentDetailsForVIN(sOriginalEqunr, sVIN, function(oDetails) {
+                            this._getEquipmentDetailsForVIN(sOriginalEqunr, sVIN, function (oDetails) {
                                 aEquipmentItems.push({
                                     equnr: sDisplayEqunr,
                                     originalEqunr: sOriginalEqunr,
@@ -722,11 +724,11 @@ sap.ui.define([
                                     editable: true,
                                     selected: false
                                 });
-                                
+
                                 oTableModel.setProperty("/equipmentItems", aEquipmentItems);
                                 oTableModel.setProperty("/changedItems", []);
                                 oTableModel.setProperty("/selectedEquipment", null);
-                                
+
                                 this._updateUIState();
                                 this._showStatusMessage("Found equipment for VIN: " + sVIN, "Success");
                             }.bind(this));
@@ -736,7 +738,7 @@ sap.ui.define([
                         this._searchVINInCustomerEquipment(sVIN);
                         return;
                     }
-                    
+
                 }.bind(this),
                 error: function (oError) {
                     sap.ui.core.BusyIndicator.hide();
@@ -760,10 +762,10 @@ sap.ui.define([
                         EQKTX: "",
                         NAME1: ""
                     };
-                    
+
                     if (oData.results && oData.results.length > 0) {
                         oDetails.EQKTX = oData.results[0].EQKTX || "";
-                        oDetails.NAME1 = oData.results[0].NAME1|| "";
+                        oDetails.NAME1 = oData.results[0].NAME1 || "";
                     } else {
                         // Try EquipmentSet for description
                         var sEquipmentPath = "/EquipmentSet('" + sEquipment + "')";
@@ -778,7 +780,7 @@ sap.ui.define([
                         });
                         return;
                     }
-                    
+
                     fCallback(oDetails);
                 }.bind(this),
                 error: function () {
@@ -799,12 +801,12 @@ sap.ui.define([
                 success: function (oData) {
                     var aEquipmentItems = [];
                     var oTableModel = this.getView().getModel("table");
-                    
+
                     if (oData.results && oData.results.length > 0) {
-                        oData.results.forEach(function(oItem) {
+                        oData.results.forEach(function (oItem) {
                             var sOriginalEqunr = oItem.Equnr || "";
                             var sDisplayEqunr = sOriginalEqunr.replace(/^0+/, '') || "0";
-                            
+
                             aEquipmentItems.push({
                                 equnr: sDisplayEqunr,
                                 originalEqunr: sOriginalEqunr,
@@ -820,27 +822,27 @@ sap.ui.define([
                                 selected: false
                             });
                         });
-                        
+
                         this._showStatusMessage("Found " + aEquipmentItems.length + " equipment(s) for VIN: " + sVIN, "Success");
                     } else {
                         this._showStatusMessage("No equipment found for VIN: " + sVIN, "Information");
                     }
-                    
+
                     oTableModel.setProperty("/equipmentItems", aEquipmentItems);
                     oTableModel.setProperty("/changedItems", []);
                     oTableModel.setProperty("/selectedEquipment", null);
-                    
+
                     this._updateUIState();
-                    
+
                 }.bind(this),
                 error: function (oError) {
                     this._showStatusMessage("Error searching for VIN: " + sVIN, "Error");
                     console.error("Error searching VIN:", oError);
-                    
+
                     var oTableModel = this.getView().getModel("table");
                     oTableModel.setProperty("/equipmentItems", []);
                     oTableModel.setProperty("/changedItems", []);
-                    
+
                     this._updateUIState();
                 }.bind(this)
             });
@@ -875,14 +877,14 @@ sap.ui.define([
             if (oContext) {
                 var oData = oContext.getObject();
                 var oTableModel = this.getView().getModel("table");
-                
+
                 // Store selected equipment
                 oTableModel.setProperty("/selectedEquipment", oData.equnr);
-                
+
                 // Update form model
                 var oFormModel = this.getView().getModel("form");
                 oFormModel.setProperty("/selectedItem", oData);
-                
+
                 // Enable update button
                 this.byId("idUpdateButton").setEnabled(true);
             }
@@ -892,24 +894,24 @@ sap.ui.define([
             var oInput = oEvent.getSource();
             var sNewValue = oInput.getValue();
             var oContext = oInput.getBindingContext("table");
-            
+
             if (oContext) {
                 var oData = oContext.getObject();
                 var oTableModel = this.getView().getModel("table");
                 var sPath = oContext.getPath();
-                
+
                 // Check if value actually changed
                 if (sNewValue !== oData.originalLicenseNum) {
                     // Update the model
                     oTableModel.setProperty(sPath + "/licenseNum", sNewValue);
                     oTableModel.setProperty(sPath + "/hasChanged", true);
-                    
+
                     // Update changed items list
                     var aChangedItems = oTableModel.getProperty("/changedItems") || [];
-                    var oChangedItem = aChangedItems.find(function(item) {
+                    var oChangedItem = aChangedItems.find(function (item) {
                         return item.equnr === oData.equnr;
                     });
-                    
+
                     if (!oChangedItem) {
                         aChangedItems.push({
                             equnr: oData.equnr,
@@ -919,12 +921,12 @@ sap.ui.define([
                     } else {
                         oChangedItem.licenseNum = sNewValue;
                     }
-                    
+
                     oTableModel.setProperty("/changedItems", aChangedItems);
-                    
+
                     // Update UI state
                     this._updateUIState();
-                    
+
                     MessageToast.show("Plate number updated for " + oData.equnr);
                 }
             }
@@ -935,7 +937,7 @@ sap.ui.define([
             var sSelectedKey = oEvent.getParameter("selectedItem").getKey();
             var oFormModel = this.getView().getModel("form");
             oFormModel.setProperty("/searchMode", sSelectedKey);
-            
+
             // Clear all filters and table when switching modes
             this.byId("idCustomer").setValue("");
             this.byId("idCustomerName").setText("No customer selected");
@@ -943,15 +945,15 @@ sap.ui.define([
             this.byId("idEquipmentDescription").setText("No equipment selected");
             this.byId("idVINSearch").setValue("");
             this.byId("idVINDescription").setText("Search by VIN number");
-            
+
             var oTableModel = this.getView().getModel("table");
             oTableModel.setProperty("/equipmentItems", []);
             oTableModel.setProperty("/changedItems", []);
-            
+
             this._updateUIState();
-            
+
             // Show appropriate message
-            switch(sSelectedKey) {
+            switch (sSelectedKey) {
                 case "customer":
                     this._showStatusMessage("Select a customer to view all their equipment", "Information");
                     break;
@@ -969,28 +971,28 @@ sap.ui.define([
             var oTableModel = this.getView().getModel("table");
             var sSelectedEquipment = oTableModel.getProperty("/selectedEquipment");
             var aEquipmentItems = oTableModel.getProperty("/equipmentItems");
-            
+
             if (!sSelectedEquipment) {
                 MessageBox.error("Please select an equipment from the table first");
                 return;
             }
-            
-            var oSelectedItem = aEquipmentItems.find(function(item) {
+
+            var oSelectedItem = aEquipmentItems.find(function (item) {
                 return item.equnr === sSelectedEquipment;
             });
-            
+
             if (!oSelectedItem) {
                 MessageBox.error("Selected equipment not found");
                 return;
             }
-            
+
             if (!oSelectedItem.licenseNum || oSelectedItem.licenseNum.trim() === "") {
                 MessageBox.error("Please enter a plate number for the selected equipment");
                 return;
             }
-            
+
             MessageBox.confirm(
-                "Update plate number for Equipment " + sSelectedEquipment + 
+                "Update plate number for Equipment " + sSelectedEquipment +
                 "?\n\nNew Plate Number: " + oSelectedItem.licenseNum,
                 {
                     title: "Confirm Update",
@@ -1005,7 +1007,7 @@ sap.ui.define([
 
         _updateSingleEquipment: function (oEquipment) {
             sap.ui.core.BusyIndicator.show(0);
-            
+
             var oModel = this.getView().getModel();
             // Use originalEqunr (with leading zeros) for OData calls
             var sPath = "/FleetSet('" + (oEquipment.originalEqunr || oEquipment.equnr) + "')";
@@ -1017,30 +1019,30 @@ sap.ui.define([
             oModel.update(sPath, oPayload, {
                 success: function (oData) {
                     sap.ui.core.BusyIndicator.hide();
-                    
+
                     // Update original value
                     var oTableModel = this.getView().getModel("table");
                     var aEquipmentItems = oTableModel.getProperty("/equipmentItems");
-                    
-                    aEquipmentItems.forEach(function(item) {
+
+                    aEquipmentItems.forEach(function (item) {
                         if (item.equnr === oEquipment.equnr) {
                             item.originalLicenseNum = oEquipment.licenseNum;
                             item.hasChanged = false;
                         }
                     });
-                    
+
                     // Remove from changed items
                     var aChangedItems = oTableModel.getProperty("/changedItems") || [];
-                    aChangedItems = aChangedItems.filter(function(item) {
+                    aChangedItems = aChangedItems.filter(function (item) {
                         return item.equnr !== oEquipment.equnr;
                     });
-                    
+
                     oTableModel.setProperty("/equipmentItems", aEquipmentItems);
                     oTableModel.setProperty("/changedItems", aChangedItems);
-                    
+
                     this._updateUIState();
                     this._showStatusMessage("Updated plate number for " + oEquipment.equnr, "Success");
-                    
+
                 }.bind(this),
                 error: function (oError) {
                     sap.ui.core.BusyIndicator.hide();
@@ -1054,18 +1056,18 @@ sap.ui.define([
         onBatchUpdatePress: function () {
             var oTableModel = this.getView().getModel("table");
             var aChangedItems = oTableModel.getProperty("/changedItems") || [];
-            
+
             if (aChangedItems.length === 0) {
                 MessageBox.error("No changes to update");
                 return;
             }
-            
+
             var sMessage = "Update " + aChangedItems.length + " plate number(s)?\n\n";
-            aChangedItems.forEach(function(item, index) {
-                sMessage += (index + 1) + ". Equipment " + item.equnr + ": " + 
-                           (item.licenseNum || "(empty)") + "\n";
+            aChangedItems.forEach(function (item, index) {
+                sMessage += (index + 1) + ". Equipment " + item.equnr + ": " +
+                    (item.licenseNum || "(empty)") + "\n";
             });
-            
+
             MessageBox.confirm(
                 sMessage,
                 {
@@ -1081,12 +1083,12 @@ sap.ui.define([
 
         _batchUpdatePlateNumbersSequentially: function (aChangedItems) {
             sap.ui.core.BusyIndicator.show(0);
-            
+
             var iSuccessCount = 0;
             var iErrorCount = 0;
             var aErrors = [];
             var oModel = this.getView().getModel();
-            
+
             // Process items one by one
             this._processUpdateSequentially(aChangedItems, 0, iSuccessCount, iErrorCount, aErrors, oModel);
         },
@@ -1095,71 +1097,71 @@ sap.ui.define([
             if (iIndex >= aChangedItems.length) {
                 // All items processed
                 sap.ui.core.BusyIndicator.hide();
-                
+
                 // Update original values in table
                 var oTableModel = this.getView().getModel("table");
                 var aEquipmentItems = oTableModel.getProperty("/equipmentItems");
-                
-                aEquipmentItems.forEach(function(oItem) {
-                    var oChangedItem = aChangedItems.find(function(changed) {
+
+                aEquipmentItems.forEach(function (oItem) {
+                    var oChangedItem = aChangedItems.find(function (changed) {
                         return changed.equnr === oItem.equnr;
                     });
-                    
+
                     if (oChangedItem) {
                         oItem.originalLicenseNum = oChangedItem.licenseNum;
                         oItem.hasChanged = false;
                     }
                 });
-                
+
                 oTableModel.setProperty("/equipmentItems", aEquipmentItems);
                 oTableModel.setProperty("/changedItems", []);
-                
+
                 // Update UI state
                 this._updateUIState();
-                
+
                 // Show results
                 if (iErrorCount === 0) {
                     this._showStatusMessage("Successfully updated " + iSuccessCount + " plate number(s)", "Success");
                 } else {
-                    var sErrorMsg = "Updated " + iSuccessCount + " plate number(s), " + 
-                                   iErrorCount + " failed.\n\nErrors:\n" + 
-                                   aErrors.join("\n");
-                    
+                    var sErrorMsg = "Updated " + iSuccessCount + " plate number(s), " +
+                        iErrorCount + " failed.\n\nErrors:\n" +
+                        aErrors.join("\n");
+
                     if (sErrorMsg.length > 500) {
                         sErrorMsg = sErrorMsg.substring(0, 500) + "...";
                     }
-                    
+
                     MessageBox.error(sErrorMsg, {
                         title: "Batch Update Results"
                     });
                 }
                 return;
             }
-            
+
             var oItem = aChangedItems[iIndex];
-            
+
             // Skip empty license numbers
             if (!oItem.licenseNum || oItem.licenseNum.trim() === "") {
                 this._processUpdateSequentially(aChangedItems, iIndex + 1, iSuccessCount, iErrorCount, aErrors, oModel);
                 return;
             }
-            
+
             // Find the full equipment object to get originalEqunr
             var oTableModel = this.getView().getModel("table");
             var aEquipmentItems = oTableModel.getProperty("/equipmentItems");
-            var oEquipment = aEquipmentItems.find(function(equip) {
+            var oEquipment = aEquipmentItems.find(function (equip) {
                 return equip.equnr === oItem.equnr;
             });
-            
+
             // Use originalEqunr if available
             var sEqunrForUpdate = oEquipment ? (oEquipment.originalEqunr || oItem.equnr) : oItem.equnr;
-            
+
             var sPath = "/FleetSet('" + sEqunrForUpdate + "')";
             var oPayload = {
                 EQUNR: sEqunrForUpdate,
                 LICENSE_NUM: oItem.licenseNum
             };
-            
+
             // Update one item at a time
             oModel.update(sPath, oPayload, {
                 success: function () {
@@ -1169,8 +1171,8 @@ sap.ui.define([
                 }.bind(this),
                 error: function (oError) {
                     iErrorCount++;
-                    aErrors.push("Equipment " + oItem.equnr + ": " + 
-                                (oError.message || "Update failed"));
+                    aErrors.push("Equipment " + oItem.equnr + ": " +
+                        (oError.message || "Update failed"));
                     // Continue with next item even if this one fails
                     this._processUpdateSequentially(aChangedItems, iIndex + 1, iSuccessCount, iErrorCount, aErrors, oModel);
                 }.bind(this),
@@ -1183,13 +1185,13 @@ sap.ui.define([
             var oTableModel = this.getView().getModel("table");
             var aChangedItems = oTableModel.getProperty("/changedItems") || [];
             var sSelectedEquipment = oTableModel.getProperty("/selectedEquipment");
-            
+
             // Update batch update button
             this.byId("idBatchUpdateButton").setEnabled(aChangedItems.length > 0);
-            
+
             // Update selected update button
             this.byId("idUpdateButton").setEnabled(!!sSelectedEquipment);
-            
+
             // Update form model
             var oFormModel = this.getView().getModel("form");
             oFormModel.setProperty("/hasChanges", aChangedItems.length > 0);
@@ -1201,10 +1203,10 @@ sap.ui.define([
                 oMessageStrip.setText(sMessage);
                 oMessageStrip.setType(sType);
                 oMessageStrip.setVisible(true);
-                
+
                 // Auto-hide success messages after 5 seconds
                 if (sType === "Success") {
-                    setTimeout(function() {
+                    setTimeout(function () {
                         oMessageStrip.setVisible(false);
                     }, 5000);
                 }
@@ -1219,12 +1221,12 @@ sap.ui.define([
             this.byId("idEquipmentDescription").setText("No equipment selected");
             this.byId("idVINSearch").setValue("");
             this.byId("idVINDescription").setText("Search by VIN number");
-            
+
             var oTableModel = this.getView().getModel("table");
             oTableModel.setProperty("/equipmentItems", []);
             oTableModel.setProperty("/changedItems", []);
             oTableModel.setProperty("/selectedEquipment", null);
-            
+
             this._updateUIState();
             this._showStatusMessage("Filters cleared", "Information");
         },
@@ -1234,7 +1236,7 @@ sap.ui.define([
             var sEquipment = this.byId("idEquipment").getValue();
             var sVIN = this.byId("idVINSearch").getValue();
             var sSearchMode = this.byId("idSearchMode").getSelectedKey();
-            
+
             if (sSearchMode === "customer" && sCustomer) {
                 this._loadCustomerEquipment(sCustomer);
                 MessageToast.show("Refreshed customer data");
