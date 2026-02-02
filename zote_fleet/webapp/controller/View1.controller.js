@@ -6,8 +6,9 @@ sap.ui.define([
     "sap/m/MessageBox",
     "sap/ui/comp/valuehelpdialog/ValueHelpDialog",
     "sap/ui/model/json/JSONModel",
-    "sap/ui/model/Sorter"
-], function (Controller, Filter, FilterOperator, MessageToast, MessageBox, ValueHelpDialog, JSONModel, Sorter) {
+    "sap/ui/model/Sorter",
+    "sap/m/Link"
+], function (Controller, Filter, FilterOperator, MessageToast, MessageBox, ValueHelpDialog, JSONModel, Sorter, Link) {
     "use strict";
 
     return Controller.extend("zotefleet.controller.View1", {
@@ -17,18 +18,16 @@ sap.ui.define([
         },
 
         _initModels: function () {
-            // Form model for validation
             var oFormModel = new JSONModel({
                 customer: "",
                 equipment: "",
                 vin: "",
-                searchMode: "customer", // "customer", "equipment", or "vin"
+                searchMode: "customer",
                 hasChanges: false,
                 selectedItem: null
             });
             this.getView().setModel(oFormModel, "form");
 
-            // Table model
             var oTableModel = new JSONModel({
                 equipmentItems: [],
                 changedItems: [],
@@ -44,7 +43,6 @@ sap.ui.define([
             }
         },
 
-        // ========== CUSTOMER VALUE HELP ==========
         onCustomerValueHelp: function (oEvent) {
             this._showCustomerDialog();
         },
@@ -141,7 +139,6 @@ sap.ui.define([
             var aFilters = [];
 
             if (sValue && sValue.trim() !== "") {
-                // Create a combined filter for KUNNR OR NAME1
                 var oFilterKunnr = new Filter({
                     path: "KUNNR",
                     operator: FilterOperator.EQ,
@@ -154,10 +151,9 @@ sap.ui.define([
                     value1: sValue
                 });
 
-                // Use OR condition
                 aFilters = new Filter({
                     filters: [oFilterKunnr, oFilterName],
-                    and: false  // This means OR
+                    and: false
                 });
 
                 oBinding.filter(aFilters);
@@ -170,44 +166,465 @@ sap.ui.define([
 
         _onCustomerDialogOk: function (oEvt) {
             var aTokens = oEvt.getParameter("tokens");
-            if (aTokens && aTokens.length > 0) {
-                var sKunnr = aTokens[0].getKey();
-                var sCustomerName = aTokens[0].getText();
-                sCustomerName = this._extractCustomerName(sCustomerName, sKunnr);
-                var sKunnrClean = sKunnr.replace(/^0+/, '') || "0";
-
-                this.byId("idCustomer").setValue(sKunnrClean);
-                this.byId("idCustomerName").setText(sCustomerName || "No customer name");
-
-                // Clear other filters
-                this.byId("idEquipment").setValue("");
-                this.byId("idEquipmentDescription").setText("No equipment selected");
-                this.byId("idVINSearch").setValue("");
-                this.byId("idVINDescription").setText("Search by VIN number");
-
-                // Set search mode to customer
-                this.byId("idSearchMode").setSelectedKey("customer");
-
-                // Load customer equipment
-                this._loadCustomerEquipment(sKunnrClean);
+            if (!aTokens || aTokens.length === 0) {
+                return;
             }
+
+            var sKunnrRaw = aTokens[0].getKey();
+            var sDisplay = aTokens[0].getText();
+            var sKunnrClean = sKunnrRaw.replace(/^0+/, '') || "0";
+
+            // Set the customer ID immediately
+            this.byId("idCustomer").setValue(sKunnrClean);
+            this.byId("idCustomerName").setText("Loading...");
+
+            // Show the contacts section
+            this.byId("idCustomerContacts").setVisible(true);
+
+            // Fetch customer details using entity set with filter
+            this._fetchCustomerDetails(sKunnrRaw);
+
+            this.byId("idEquipment").setValue("");
+            this.byId("idEquipmentDescription").setText("No equipment selected");
+            this.byId("idVINSearch").setValue("");
+            this.byId("idVINDescription").setText("Search by VIN number");
+
+            this.byId("idSearchMode").setSelectedKey("customer");
+
+            this._loadCustomerEquipment(sKunnrClean);
 
             if (this._oCustomerVHDialog) {
                 this._oCustomerVHDialog.close();
             }
         },
 
+        _fetchCustomerDetails: function (sKunnrRaw) {
+            var oModel = this.getView().getModel();
+            var sPath = "/CustomerSet";
+            var aFilters = [
+                new Filter("KUNNR", FilterOperator.EQ, sKunnrRaw)
+            ];
+
+            sap.ui.core.BusyIndicator.show(0);
+
+            oModel.read(sPath, {
+                filters: aFilters,
+                success: function (oData) {
+                    sap.ui.core.BusyIndicator.hide();
+
+                    if (oData.results && oData.results.length > 0) {
+                        var oCustomerData = oData.results[0];
+                        this._updateCustomerContactDisplay(oCustomerData);
+                    } else {
+                        // If no data found, show placeholder
+                        this.byId("idCustomerName").setText("Customer data not found");
+                        this._showDefaultContactPlaceholders();
+                    }
+                }.bind(this),
+                error: function (oError) {
+                    sap.ui.core.BusyIndicator.hide();
+                    this.byId("idCustomerName").setText("Error loading customer data");
+                    this._showDefaultContactPlaceholders();
+                }.bind(this)
+            });
+        },
+
+        _showDefaultContactPlaceholders: function () {
+            var oEmailsContainer = this.byId("idEmailsContainer");
+            oEmailsContainer.removeAllItems();
+
+            var oPhonesContainer = this.byId("idPhonesContainer");
+            oPhonesContainer.removeAllItems();
+
+            // Show the contacts section even if empty
+            this.byId("idCustomerContacts").setVisible(true);
+        },
+
+
+        onAddMobileNumber: function () {
+            var sKunnr = this.byId("idCustomer").getValue();
+            if (!sKunnr) {
+                MessageToast.show("Please select a customer first");
+                return;
+            }
+
+            if (!this._oAddMobileDialog) {
+                this._oAddMobileDialog = new sap.m.Dialog({
+                    title: "Add New Mobile Number",
+                    type: "Message",
+                    resizable: true,
+                    draggable: true,
+                    contentWidth: "420px",
+                    content: [
+                        new sap.m.VBox({
+                            items: [
+                                new sap.m.Label({
+                                    text: "Mobile Number",
+                                    required: true,
+                                    labelFor: this.createId("inpNewMobile")
+                                }),
+                                new sap.m.Input({
+                                    id: this.createId("inpNewMobile"),
+                                    type: "Tel",
+                                    placeholder: "e.g. 9579411271",
+                                    liveChange: function (oEvent) {
+                                        var sVal = oEvent.getParameter("value").replace(/[^0-9+]/g, '');
+                                        oEvent.getSource().setValue(sVal);
+                                    }
+                                }),
+                                new sap.m.Label({
+                                    text: "Extension (optional)",
+                                    labelFor: this.createId("inpExt")
+                                }),
+                                new sap.m.Input({
+                                    id: this.createId("inpExt"),
+                                    placeholder: "e.g. 123",
+                                    type: "Number"
+                                }),
+                                new sap.m.CheckBox({
+                                    id: this.createId("chkSetDefault"),
+                                    text: "Set as default telephone number",
+                                    selected: false
+                                })
+                            ]
+                        }).addStyleClass("sapUiSmallMargin")
+                    ],
+                    beginButton: new sap.m.Button({
+                        text: "Add",
+                        type: "Emphasized",
+                        press: this._onConfirmAddMobile.bind(this)
+                    }),
+                    endButton: new sap.m.Button({
+                        text: "Cancel",
+                        press: function () {
+                            this._oAddMobileDialog.close();
+                        }.bind(this)
+                    }),
+                    afterClose: function () {
+                        sap.ui.getCore().byId(this.createId("inpNewMobile")).setValue("");
+                        sap.ui.getCore().byId(this.createId("inpExt")).setValue("");
+                        sap.ui.getCore().byId(this.createId("chkSetDefault")).setSelected(false);
+                    }.bind(this)
+                });
+
+                this.getView().addDependent(this._oAddMobileDialog);
+            }
+
+            this._oAddMobileDialog.open();
+        },
+
+        onAddEmail: function () {
+            var sKunnr = this.byId("idCustomer").getValue();
+            if (!sKunnr) {
+                MessageToast.show("Please select a customer first");
+                return;
+            }
+
+            if (!this._oAddEmailDialog) {
+                this._oAddEmailDialog = new sap.m.Dialog({
+                    title: "Add/Update Email",
+                    type: "Message",
+                    resizable: true,
+                    draggable: true,
+                    contentWidth: "420px",
+                    content: [
+                        new sap.m.VBox({
+                            items: [
+                                new sap.m.Label({
+                                    text: "Email Address",
+                                    required: true,
+                                    labelFor: this.createId("inpNewEmail")
+                                }),
+                                new sap.m.Input({
+                                    id: this.createId("inpNewEmail"),
+                                    type: "Email",
+                                    placeholder: "e.g. customer@example.com",
+                                    liveChange: function (oEvent) {
+                                        var sVal = oEvent.getParameter("value");
+                                        // Basic email validation
+                                        if (sVal && !sVal.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+                                            oEvent.getSource().setValueState("Error");
+                                            oEvent.getSource().setValueStateText("Please enter a valid email address");
+                                        } else {
+                                            oEvent.getSource().setValueState("None");
+                                        }
+                                    }
+                                }),
+
+                                new sap.m.CheckBox({
+                                    id: this.createId("chkSetEmailDefault"),
+                                    text: "Set as default email address",
+                                    selected: false
+                                })
+                            ]
+                        }).addStyleClass("sapUiSmallMargin")
+                    ],
+
+                    beginButton: new sap.m.Button({
+                        text: "Update",
+                        type: "Emphasized",
+                        press: this._onConfirmUpdateEmail.bind(this)
+                    }),
+
+                    endButton: new sap.m.Button({
+                        text: "Cancel",
+                        press: function () {
+                            this._oAddEmailDialog.close();
+                        }.bind(this)
+                    }),
+
+                    afterClose: function () {
+                        // Clean up inputs
+                        sap.ui.getCore().byId(this.createId("inpNewEmail")).setValue("");
+                        sap.ui.getCore().byId(this.createId("chkSetEmailDefault")).setSelected(false);
+                        sap.ui.getCore().byId(this.createId("inpNewEmail")).setValueState("None");
+                    }.bind(this)
+                });
+
+                this.getView().addDependent(this._oAddEmailDialog);
+            }
+
+            this._oAddEmailDialog.open();
+        },
+
+        _onConfirmUpdateEmail: function () {
+            var sEmail = sap.ui.getCore().byId(this.createId("inpNewEmail")).getValue().trim();
+            var bDefault = sap.ui.getCore().byId(this.createId("chkSetEmailDefault")).getSelected();
+
+            // Email validation
+            if (!sEmail) {
+                MessageBox.error("Please enter an email address");
+                return;
+            }
+
+            // Basic email format validation
+            var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(sEmail)) {
+                MessageBox.error("Please enter a valid email address (e.g., customer@example.com)");
+                return;
+            }
+
+            var oModel = this.getView().getModel();
+            var sKunnrClean = this.byId("idCustomer").getValue();
+
+            var sPartnerInternal = sKunnrClean.padStart(10, "0");
+
+            var mParameters = {
+                PARTNER: sPartnerInternal,
+                EMAIL: sEmail
+            };
+
+            sap.ui.core.BusyIndicator.show(0);
+
+            oModel.callFunction("/UpdateEmail", {
+                method: "POST",
+                urlParameters: mParameters,
+
+                success: function (oData, oResponse) {
+                    sap.ui.core.BusyIndicator.hide();
+
+                    var sMsg = oData?.message || "Email updated successfully";
+                    MessageToast.show(sMsg);
+
+                    this._oAddEmailDialog.close();
+
+                    // Refresh customer data to show the updated email
+                    this._refreshCustomerData(sKunnrClean);
+
+                }.bind(this),
+
+                error: function (oError) {
+                    sap.ui.core.BusyIndicator.hide();
+
+                    var sMsg = "Failed to update email";
+                    if (oError.responseText) {
+                        try {
+                            var oJson = JSON.parse(oError.responseText);
+                            sMsg += ": " + (oJson.error?.message?.value || oJson.error?.innererror?.errordetails?.[0]?.message || "");
+                        } catch (e) { }
+                    }
+
+                    MessageBox.error(sMsg);
+                }
+            });
+        },
+
+        _onConfirmAddMobile: function () {
+            var sMobile = sap.ui.getCore().byId(this.createId("inpNewMobile")).getValue().trim();
+            var sExt = sap.ui.getCore().byId(this.createId("inpExt")).getValue().trim();
+            var bDefault = sap.ui.getCore().byId(this.createId("chkSetDefault")).getSelected();
+
+            if (!sMobile || sMobile.length < 7) {
+                MessageBox.error("Please enter a valid mobile number (at least 7 digits)");
+                return;
+            }
+
+            var oModel = this.getView().getModel();
+            var sKunnrClean = this.byId("idCustomer").getValue();
+
+            var sAddrNumber = "0000000123";
+            var sPartnerInternal = sKunnrClean.padStart(10, "0");
+
+            var mParameters = {
+                Partner: sPartnerInternal,
+                Addrnumber: sAddrNumber,
+                TelNumber: sMobile,
+                TelExtens: sExt || "",
+                SetAsDefault: bDefault
+            };
+
+            sap.ui.core.BusyIndicator.show(0);
+
+            oModel.callFunction("/AddMobileNumber", {
+                method: "POST",
+                urlParameters: mParameters,
+                success: function (oData, oResponse) {
+                    sap.ui.core.BusyIndicator.hide();
+                    var sMsg = oData?.message || "Mobile number added successfully";
+                    MessageToast.show(sMsg);
+                    this._oAddMobileDialog.close();
+                    this._refreshCustomerData(sKunnrClean);
+                }.bind(this),
+                error: function (oError) {
+                    sap.ui.core.BusyIndicator.hide();
+                    var sMsg = "Failed to add mobile number";
+                    if (oError.responseText) {
+                        try {
+                            var oJson = JSON.parse(oError.responseText);
+                            sMsg += ": " + (oJson.error?.message?.value || oJson.error?.innererror?.errordetails?.[0]?.message || "");
+                        } catch (e) { }
+                    }
+                    MessageBox.error(sMsg);
+                }
+            });
+        },
+
+        _refreshCustomerData: function (sCustomer) {
+            var oModel = this.getView().getModel();
+            var sPath = "/CustomerSet";
+
+            var sKunnrWithZeros = sCustomer.padStart(10, "0");
+            var aFilters = [
+                new Filter("KUNNR", FilterOperator.EQ, sKunnrWithZeros)
+            ];
+
+            sap.ui.core.BusyIndicator.show(0);
+
+            oModel.read(sPath, {
+                filters: aFilters,
+                success: function (oData) {
+                    sap.ui.core.BusyIndicator.hide();
+
+                    if (oData.results && oData.results.length > 0) {
+                        var oCustomerData = oData.results[0];
+                        this._updateCustomerContactDisplay(oCustomerData);
+                    } else {
+                        MessageToast.show("Customer data not found after refresh");
+                    }
+                }.bind(this),
+                error: function (oError) {
+                    sap.ui.core.BusyIndicator.hide();
+                    MessageToast.show("Could not refresh customer data");
+                }
+            });
+        },
+
+        _updateCustomerContactDisplay: function (oCustomerData) {
+            if (!oCustomerData) return;
+
+            var sKunnrRaw = oCustomerData.KUNNR || "";
+            var sKunnrClean = sKunnrRaw.replace(/^0+/, '') || "0";
+            var sName = oCustomerData.NAME1 || "No customer name";
+
+            this.byId("idCustomerName").setText(sName);
+
+            var oEmailsContainer = this.byId("idEmailsContainer");
+            oEmailsContainer.removeAllItems();
+
+            var aEmails = (oCustomerData.EMAILS || "No email available")
+                .split(';')
+                .map(s => s.trim())
+                .filter(Boolean);
+
+            aEmails.forEach(function (sEmail) {
+                oEmailsContainer.addItem(new sap.m.Link({
+                    text: sEmail,
+                    href: "mailto:" + sEmail,
+                    target: "_blank",
+                    wrapping: true,
+                    class: "sapUiTinyMarginEnd sapUiTinyMarginBottom email-pill"
+                }));
+            });
+
+            var oPhonesContainer = this.byId("idPhonesContainer");
+            oPhonesContainer.removeAllItems();
+
+            var sRaw = oCustomerData.TELEPHONES || "No telephone available";
+
+            var aParts = sRaw.split(';')
+                .map(part => part.trim())
+                .filter(part => part.length > 0);
+
+            var aDisplayParts = [];
+            aParts.forEach(function (part, index) {
+                var trimmed = part.trim();
+                if (trimmed.includes("(Default)") && !/\s\(Default\)/.test(trimmed)) {
+                    trimmed = trimmed.replace("(Default)", " (Default)");
+                }
+                aDisplayParts.push(trimmed);
+            });
+
+            var aUniqueDisplay = [];
+            var seenDigits = new Set();
+
+            aDisplayParts.forEach(function (displayText) {
+                var digitsOnly = displayText.replace(/[^0-9+]/g, '');
+                if (digitsOnly.length >= 7 && !seenDigits.has(digitsOnly)) {
+                    seenDigits.add(digitsOnly);
+                    aUniqueDisplay.push(displayText);
+                }
+            });
+
+            aUniqueDisplay.forEach(function (sDisplay, index) {
+                var sClean = sDisplay
+                    .replace(/\s+/g, '')
+                    .replace(/\(Default\)/gi, '')
+                    .replace(/[^0-9+]/g, '');
+
+                var isDefault = /\(default\)/i.test(sDisplay);
+
+                var oLink = new sap.m.Link({
+                    text: sDisplay,
+                    href: sClean ? "tel:" + sClean : null,
+                    target: "_blank",
+                    wrapping: true,
+                    emphasized: isDefault,
+                    class: "phone-pill"
+                });
+
+                if (isDefault) {
+                    oLink.addStyleClass("default-pill");
+                }
+
+                oPhonesContainer.addItem(oLink);
+            });
+
+            var bHasPhones = aUniqueDisplay.length > 0 && aUniqueDisplay[0] !== "No telephone available";
+            this.byId("idCustomerContacts").setVisible(bHasPhones || aEmails.length > 0);
+        },
+
         onCustomerChange: function (oEvent) {
             var sValue = oEvent.getSource().getValue();
             if (!sValue) {
-                // Clear table if customer is cleared
                 var oTableModel = this.getView().getModel("table");
                 oTableModel.setProperty("/equipmentItems", []);
+                this.byId("idCustomerContacts").setVisible(false);
+                this.byId("idEmailsContainer").removeAllItems();
+                this.byId("idPhonesContainer").removeAllItems();
                 this._updateUIState();
             }
         },
 
-        // ========== EQUIPMENT VALUE HELP ==========
         onEquipmentValueHelp: function (oEvent) {
             this._showEquipmentDialog();
         },
@@ -340,16 +757,13 @@ sap.ui.define([
                 this.byId("idEquipment").setValue(sEqunrClean);
                 this.byId("idEquipmentDescription").setText(sDescription || "No description available");
 
-                // Clear other filters
                 this.byId("idCustomer").setValue("");
                 this.byId("idCustomerName").setText("No customer selected");
                 this.byId("idVINSearch").setValue("");
                 this.byId("idVINDescription").setText("Search by VIN number");
 
-                // Set search mode to equipment
                 this.byId("idSearchMode").setSelectedKey("equipment");
 
-                // Load single equipment
                 this._loadSingleEquipment(sEqunrClean);
             }
 
@@ -361,14 +775,12 @@ sap.ui.define([
         onEquipmentChange: function (oEvent) {
             var sValue = oEvent.getSource().getValue();
             if (!sValue) {
-                // Clear table if equipment is cleared
                 var oTableModel = this.getView().getModel("table");
                 oTableModel.setProperty("/equipmentItems", []);
                 this._updateUIState();
             }
         },
 
-        // ========== VIN VALUE HELP ==========
         onVINValueHelp: function (oEvent) {
             this._showVINDialog();
         },
@@ -482,16 +894,13 @@ sap.ui.define([
                 this.byId("idVINSearch").setValue(sVIN);
                 this.byId("idVINDescription").setText("VIN: " + sVIN);
 
-                // Clear other filters
                 this.byId("idCustomer").setValue("");
                 this.byId("idCustomerName").setText("No customer selected");
                 this.byId("idEquipment").setValue("");
                 this.byId("idEquipmentDescription").setText("No equipment selected");
 
-                // Set search mode to VIN
                 this.byId("idSearchMode").setSelectedKey("vin");
 
-                // Load equipment by VIN
                 this._loadEquipmentByVIN(sVIN);
             }
 
@@ -503,14 +912,12 @@ sap.ui.define([
         onVINChange: function (oEvent) {
             var sValue = oEvent.getSource().getValue();
             if (!sValue) {
-                // Clear table if VIN is cleared
                 var oTableModel = this.getView().getModel("table");
                 oTableModel.setProperty("/equipmentItems", []);
                 this._updateUIState();
             }
         },
 
-        // ========== DATA LOADING METHODS ==========
         _loadCustomerEquipment: function (sCustomer) {
             sap.ui.core.BusyIndicator.show(0);
 
@@ -564,12 +971,9 @@ sap.ui.define([
                 error: function (oError) {
                     sap.ui.core.BusyIndicator.hide();
                     this._showStatusMessage("Error loading equipment data", "Error");
-                    console.error("Error loading equipment:", oError);
-
                     var oTableModel = this.getView().getModel("table");
                     oTableModel.setProperty("/equipmentItems", []);
                     oTableModel.setProperty("/changedItems", []);
-
                     this._updateUIState();
                 }.bind(this)
             });
@@ -579,8 +983,6 @@ sap.ui.define([
             sap.ui.core.BusyIndicator.show(0);
 
             var oModel = this.getView().getModel();
-
-            // First get equipment details
             var sEquipmentPath = "/EquipmentSet('" + sEquipment + "')";
 
             oModel.read(sEquipmentPath, {
@@ -591,7 +993,6 @@ sap.ui.define([
                         return;
                     }
 
-                    // Now get fleet data for this equipment
                     var sFleetPath = "/FleetSet('" + sEquipment + "')";
 
                     oModel.read(sFleetPath, {
@@ -604,7 +1005,6 @@ sap.ui.define([
                             var sOriginalEqunr = oEquipData.EQUNR || sEquipment;
                             var sDisplayEqunr = sOriginalEqunr.replace(/^0+/, '') || "0";
 
-                            // Try to get customer name from CustomerEquipmentSet
                             this._getCustomerForEquipment(sEquipment, function (sCustomerName) {
                                 var oItem = {
                                     equnr: sDisplayEqunr,
@@ -635,7 +1035,6 @@ sap.ui.define([
                         }.bind(this),
                         error: function (oError) {
                             sap.ui.core.BusyIndicator.hide();
-                            // Even if fleet data fails, we can still show equipment
                             var aEquipmentItems = [];
                             var oTableModel = this.getView().getModel("table");
 
@@ -674,12 +1073,9 @@ sap.ui.define([
                 error: function (oError) {
                     sap.ui.core.BusyIndicator.hide();
                     this._showStatusMessage("Error loading equipment data", "Error");
-                    console.error("Error loading equipment:", oError);
-
                     var oTableModel = this.getView().getModel("table");
                     oTableModel.setProperty("/equipmentItems", []);
                     oTableModel.setProperty("/changedItems", []);
-
                     this._updateUIState();
                 }.bind(this)
             });
@@ -703,12 +1099,10 @@ sap.ui.define([
                     var oTableModel = this.getView().getModel("table");
 
                     if (oData.results && oData.results.length > 0) {
-                        // Should be only one result for VIN search
                         oData.results.forEach(function (oItem) {
                             var sOriginalEqunr = oItem.EQUNR || "";
                             var sDisplayEqunr = sOriginalEqunr.replace(/^0+/, '') || "0";
 
-                            // Try to get equipment description and customer
                             this._getEquipmentDetailsForVIN(sOriginalEqunr, sVIN, function (oDetails) {
                                 aEquipmentItems.push({
                                     equnr: sDisplayEqunr,
@@ -734,7 +1128,6 @@ sap.ui.define([
                             }.bind(this));
                         }.bind(this));
                     } else {
-                        // Alternative: Search through CustomerEquipmentSet for VIN
                         this._searchVINInCustomerEquipment(sVIN);
                         return;
                     }
@@ -742,7 +1135,6 @@ sap.ui.define([
                 }.bind(this),
                 error: function (oError) {
                     sap.ui.core.BusyIndicator.hide();
-                    // Try alternative search
                     this._searchVINInCustomerEquipment(sVIN);
                 }.bind(this)
             });
@@ -767,7 +1159,6 @@ sap.ui.define([
                         oDetails.EQKTX = oData.results[0].EQKTX || "";
                         oDetails.NAME1 = oData.results[0].NAME1 || "";
                     } else {
-                        // Try EquipmentSet for description
                         var sEquipmentPath = "/EquipmentSet('" + sEquipment + "')";
                         oModel.read(sEquipmentPath, {
                             success: function (oEquipData) {
@@ -837,12 +1228,9 @@ sap.ui.define([
                 }.bind(this),
                 error: function (oError) {
                     this._showStatusMessage("Error searching for VIN: " + sVIN, "Error");
-                    console.error("Error searching VIN:", oError);
-
                     var oTableModel = this.getView().getModel("table");
                     oTableModel.setProperty("/equipmentItems", []);
                     oTableModel.setProperty("/changedItems", []);
-
                     this._updateUIState();
                 }.bind(this)
             });
@@ -870,22 +1258,15 @@ sap.ui.define([
             });
         },
 
-        // ========== TABLE FUNCTIONS ==========
         onTableItemPress: function (oEvent) {
             var oItem = oEvent.getParameter("listItem") || oEvent.getSource();
             var oContext = oItem.getBindingContext("table");
             if (oContext) {
                 var oData = oContext.getObject();
                 var oTableModel = this.getView().getModel("table");
-
-                // Store selected equipment
                 oTableModel.setProperty("/selectedEquipment", oData.equnr);
-
-                // Update form model
                 var oFormModel = this.getView().getModel("form");
                 oFormModel.setProperty("/selectedItem", oData);
-
-                // Enable update button
                 this.byId("idUpdateButton").setEnabled(true);
             }
         },
@@ -900,13 +1281,10 @@ sap.ui.define([
                 var oTableModel = this.getView().getModel("table");
                 var sPath = oContext.getPath();
 
-                // Check if value actually changed
                 if (sNewValue !== oData.originalLicenseNum) {
-                    // Update the model
                     oTableModel.setProperty(sPath + "/licenseNum", sNewValue);
                     oTableModel.setProperty(sPath + "/hasChanged", true);
 
-                    // Update changed items list
                     var aChangedItems = oTableModel.getProperty("/changedItems") || [];
                     var oChangedItem = aChangedItems.find(function (item) {
                         return item.equnr === oData.equnr;
@@ -923,22 +1301,17 @@ sap.ui.define([
                     }
 
                     oTableModel.setProperty("/changedItems", aChangedItems);
-
-                    // Update UI state
                     this._updateUIState();
-
                     MessageToast.show("Plate number updated for " + oData.equnr);
                 }
             }
         },
 
-        // ========== SEARCH MODE FUNCTIONS ==========
         onSearchModeChange: function (oEvent) {
             var sSelectedKey = oEvent.getParameter("selectedItem").getKey();
             var oFormModel = this.getView().getModel("form");
             oFormModel.setProperty("/searchMode", sSelectedKey);
 
-            // Clear all filters and table when switching modes
             this.byId("idCustomer").setValue("");
             this.byId("idCustomerName").setText("No customer selected");
             this.byId("idEquipment").setValue("");
@@ -946,13 +1319,16 @@ sap.ui.define([
             this.byId("idVINSearch").setValue("");
             this.byId("idVINDescription").setText("Search by VIN number");
 
+            this.byId("idCustomerContacts").setVisible(false);
+            this.byId("idEmailsContainer").removeAllItems();
+            this.byId("idPhonesContainer").removeAllItems();
+
             var oTableModel = this.getView().getModel("table");
             oTableModel.setProperty("/equipmentItems", []);
             oTableModel.setProperty("/changedItems", []);
 
             this._updateUIState();
 
-            // Show appropriate message
             switch (sSelectedKey) {
                 case "customer":
                     this._showStatusMessage("Select a customer to view all their equipment", "Information");
@@ -966,7 +1342,6 @@ sap.ui.define([
             }
         },
 
-        // ========== UPDATE FUNCTIONS ==========
         onUpdateSelectedPress: function () {
             var oTableModel = this.getView().getModel("table");
             var sSelectedEquipment = oTableModel.getProperty("/selectedEquipment");
@@ -1009,7 +1384,6 @@ sap.ui.define([
             sap.ui.core.BusyIndicator.show(0);
 
             var oModel = this.getView().getModel();
-            // Use originalEqunr (with leading zeros) for OData calls
             var sPath = "/FleetSet('" + (oEquipment.originalEqunr || oEquipment.equnr) + "')";
             var oPayload = {
                 EQUNR: oEquipment.originalEqunr || oEquipment.equnr,
@@ -1020,7 +1394,6 @@ sap.ui.define([
                 success: function (oData) {
                     sap.ui.core.BusyIndicator.hide();
 
-                    // Update original value
                     var oTableModel = this.getView().getModel("table");
                     var aEquipmentItems = oTableModel.getProperty("/equipmentItems");
 
@@ -1031,7 +1404,6 @@ sap.ui.define([
                         }
                     });
 
-                    // Remove from changed items
                     var aChangedItems = oTableModel.getProperty("/changedItems") || [];
                     aChangedItems = aChangedItems.filter(function (item) {
                         return item.equnr !== oEquipment.equnr;
@@ -1047,7 +1419,6 @@ sap.ui.define([
                 error: function (oError) {
                     sap.ui.core.BusyIndicator.hide();
                     this._showStatusMessage("Update failed for " + oEquipment.equnr, "Error");
-                    console.error("Update error:", oError);
                 }.bind(this),
                 merge: false
             });
@@ -1089,16 +1460,13 @@ sap.ui.define([
             var aErrors = [];
             var oModel = this.getView().getModel();
 
-            // Process items one by one
             this._processUpdateSequentially(aChangedItems, 0, iSuccessCount, iErrorCount, aErrors, oModel);
         },
 
         _processUpdateSequentially: function (aChangedItems, iIndex, iSuccessCount, iErrorCount, aErrors, oModel) {
             if (iIndex >= aChangedItems.length) {
-                // All items processed
                 sap.ui.core.BusyIndicator.hide();
 
-                // Update original values in table
                 var oTableModel = this.getView().getModel("table");
                 var aEquipmentItems = oTableModel.getProperty("/equipmentItems");
 
@@ -1115,11 +1483,8 @@ sap.ui.define([
 
                 oTableModel.setProperty("/equipmentItems", aEquipmentItems);
                 oTableModel.setProperty("/changedItems", []);
-
-                // Update UI state
                 this._updateUIState();
 
-                // Show results
                 if (iErrorCount === 0) {
                     this._showStatusMessage("Successfully updated " + iSuccessCount + " plate number(s)", "Success");
                 } else {
@@ -1140,20 +1505,17 @@ sap.ui.define([
 
             var oItem = aChangedItems[iIndex];
 
-            // Skip empty license numbers
             if (!oItem.licenseNum || oItem.licenseNum.trim() === "") {
                 this._processUpdateSequentially(aChangedItems, iIndex + 1, iSuccessCount, iErrorCount, aErrors, oModel);
                 return;
             }
 
-            // Find the full equipment object to get originalEqunr
             var oTableModel = this.getView().getModel("table");
             var aEquipmentItems = oTableModel.getProperty("/equipmentItems");
             var oEquipment = aEquipmentItems.find(function (equip) {
                 return equip.equnr === oItem.equnr;
             });
 
-            // Use originalEqunr if available
             var sEqunrForUpdate = oEquipment ? (oEquipment.originalEqunr || oItem.equnr) : oItem.equnr;
 
             var sPath = "/FleetSet('" + sEqunrForUpdate + "')";
@@ -1162,37 +1524,29 @@ sap.ui.define([
                 LICENSE_NUM: oItem.licenseNum
             };
 
-            // Update one item at a time
             oModel.update(sPath, oPayload, {
                 success: function () {
                     iSuccessCount++;
-                    // Process next item
                     this._processUpdateSequentially(aChangedItems, iIndex + 1, iSuccessCount, iErrorCount, aErrors, oModel);
                 }.bind(this),
                 error: function (oError) {
                     iErrorCount++;
                     aErrors.push("Equipment " + oItem.equnr + ": " +
                         (oError.message || "Update failed"));
-                    // Continue with next item even if this one fails
                     this._processUpdateSequentially(aChangedItems, iIndex + 1, iSuccessCount, iErrorCount, aErrors, oModel);
                 }.bind(this),
                 merge: false
             });
         },
 
-        // ========== UI HELPER FUNCTIONS ==========
         _updateUIState: function () {
             var oTableModel = this.getView().getModel("table");
             var aChangedItems = oTableModel.getProperty("/changedItems") || [];
             var sSelectedEquipment = oTableModel.getProperty("/selectedEquipment");
 
-            // Update batch update button
             this.byId("idBatchUpdateButton").setEnabled(aChangedItems.length > 0);
-
-            // Update selected update button
             this.byId("idUpdateButton").setEnabled(!!sSelectedEquipment);
 
-            // Update form model
             var oFormModel = this.getView().getModel("form");
             oFormModel.setProperty("/hasChanges", aChangedItems.length > 0);
         },
@@ -1204,7 +1558,6 @@ sap.ui.define([
                 oMessageStrip.setType(sType);
                 oMessageStrip.setVisible(true);
 
-                // Auto-hide success messages after 5 seconds
                 if (sType === "Success") {
                     setTimeout(function () {
                         oMessageStrip.setVisible(false);
@@ -1213,7 +1566,6 @@ sap.ui.define([
             }
         },
 
-        // ========== ACTION BUTTONS ==========
         onClearFiltersPress: function () {
             this.byId("idCustomer").setValue("");
             this.byId("idCustomerName").setText("No customer selected");
@@ -1221,6 +1573,10 @@ sap.ui.define([
             this.byId("idEquipmentDescription").setText("No equipment selected");
             this.byId("idVINSearch").setValue("");
             this.byId("idVINDescription").setText("Search by VIN number");
+
+            this.byId("idCustomerContacts").setVisible(false);
+            this.byId("idEmailsContainer").removeAllItems();
+            this.byId("idPhonesContainer").removeAllItems();
 
             var oTableModel = this.getView().getModel("table");
             oTableModel.setProperty("/equipmentItems", []);
@@ -1278,7 +1634,6 @@ sap.ui.define([
             this._showVINDialog();
         },
 
-        // ========== UTILITY FUNCTIONS ==========
         formatEquipmentNoLeadingZeros: function (sValue) {
             if (!sValue) return "";
             return sValue.replace(/^0+/, '') || "0";
@@ -1307,6 +1662,5 @@ sap.ui.define([
             var sCustomerName = sFullText.replace(new RegExp(sKunnrPattern), "");
             return sCustomerName.trim() || sFullText;
         }
-
     });
 });
