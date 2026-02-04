@@ -24,7 +24,9 @@ sap.ui.define([
                 vin: "",
                 searchMode: "customer",
                 hasChanges: false,
-                selectedItem: null
+                selectedItem: null,
+                plateType: "green",
+                isCustomerSelected: false
             });
             this.getView().setModel(oFormModel, "form");
 
@@ -34,12 +36,21 @@ sap.ui.define([
                 selectedEquipment: null
             });
             this.getView().setModel(oTableModel, "table");
+            var oContactsContainer = this.byId("idCustomerContacts");
+            if (oContactsContainer) {
+                oContactsContainer.setVisible(false);
+            }
         },
 
         _setupSearchMode: function () {
             var oSelect = this.byId("idSearchMode");
             if (oSelect) {
                 oSelect.setSelectedKey("customer");
+            }
+
+            var oPlateType = this.byId("idPlateType");
+            if (oPlateType) {
+                oPlateType.setSelectedIndex(0);
             }
         },
 
@@ -174,14 +185,16 @@ sap.ui.define([
             var sDisplay = aTokens[0].getText();
             var sKunnrClean = sKunnrRaw.replace(/^0+/, '') || "0";
 
-            // Set the customer ID immediately
             this.byId("idCustomer").setValue(sKunnrClean);
             this.byId("idCustomerName").setText("Loading...");
 
-            // Show the contacts section
-            this.byId("idCustomerContacts").setVisible(true);
+            // Initially hide contacts while loading
+            this.byId("idCustomerContacts").setVisible(false);
 
-            // Fetch customer details using entity set with filter
+            // Update form model
+            var oFormModel = this.getView().getModel("form");
+            oFormModel.setProperty("/isCustomerSelected", true);
+
             this._fetchCustomerDetails(sKunnrRaw);
 
             this.byId("idEquipment").setValue("");
@@ -197,7 +210,6 @@ sap.ui.define([
                 this._oCustomerVHDialog.close();
             }
         },
-
         _fetchCustomerDetails: function (sKunnrRaw) {
             var oModel = this.getView().getModel();
             var sPath = "/CustomerSet";
@@ -216,30 +228,172 @@ sap.ui.define([
                         var oCustomerData = oData.results[0];
                         this._updateCustomerContactDisplay(oCustomerData);
                     } else {
-                        // If no data found, show placeholder
+                        // Customer not found, but still show placeholders
                         this.byId("idCustomerName").setText("Customer data not found");
-                        this._showDefaultContactPlaceholders();
+                        // Pass empty object to show placeholders
+                        this._updateCustomerContactDisplay(null);
                     }
                 }.bind(this),
                 error: function (oError) {
                     sap.ui.core.BusyIndicator.hide();
                     this.byId("idCustomerName").setText("Error loading customer data");
-                    this._showDefaultContactPlaceholders();
+                    // Pass empty object to show placeholders
+                    this._updateCustomerContactDisplay(null);
                 }.bind(this)
             });
         },
 
-        _showDefaultContactPlaceholders: function () {
+        _updateCustomerContactDisplay: function (oCustomerData) {
+            if (!oCustomerData) {
+                this._showDefaultContactPlaceholders();
+                return;
+            }
+
+            var sKunnrRaw = oCustomerData.KUNNR || "";
+            var sKunnrClean = sKunnrRaw.replace(/^0+/, '') || "0";
+            var sName = oCustomerData.NAME1 || "No customer name";
+
+            this.byId("idCustomerName").setText(sName);
+
             var oEmailsContainer = this.byId("idEmailsContainer");
             oEmailsContainer.removeAllItems();
 
             var oPhonesContainer = this.byId("idPhonesContainer");
             oPhonesContainer.removeAllItems();
 
-            // Show the contacts section even if empty
-            this.byId("idCustomerContacts").setVisible(true);
-        },
+            // Process emails - always show at least placeholder
+            var aEmails = (oCustomerData.EMAILS || "")
+                .split(';')
+                .map(s => s.trim())
+                .filter(Boolean);
 
+            if (aEmails.length === 0) {
+                // Show placeholder when no emails
+                oEmailsContainer.addItem(new sap.m.Text({
+                    text: "No email available",
+                    wrapping: true,
+                    class: "sapUiTinyMarginEnd sapUiTinyMarginBottom email-pill placeholder-text"
+                }));
+            } else {
+                // Show actual emails
+                aEmails.forEach(function (sEmail) {
+                    oEmailsContainer.addItem(new sap.m.Link({
+                        text: sEmail,
+                        href: "mailto:" + sEmail,
+                        target: "_blank",
+                        wrapping: true,
+                        class: "sapUiTinyMarginEnd sapUiTinyMarginBottom email-pill"
+                    }));
+                });
+            }
+
+            // Process phones - always show at least placeholder
+            var sRaw = oCustomerData.TELEPHONES || "";
+
+            if (sRaw.trim() === "") {
+                // Show placeholder when no phones
+                oPhonesContainer.addItem(new sap.m.Text({
+                    text: "No telephone available",
+                    wrapping: true,
+                    emphasized: false,
+                    class: "phone-pill placeholder-text"
+                }));
+            } else {
+                // Process and show actual phones
+                var aParts = sRaw.split(';')
+                    .map(part => part.trim())
+                    .filter(part => part.length > 0);
+
+                var aDisplayParts = [];
+                aParts.forEach(function (part, index) {
+                    var trimmed = part.trim();
+                    if (trimmed.includes("(Default)") && !/\s\(Default\)/.test(trimmed)) {
+                        trimmed = trimmed.replace("(Default)", " (Default)");
+                    }
+                    aDisplayParts.push(trimmed);
+                });
+
+                var aUniqueDisplay = [];
+                var seenDigits = new Set();
+
+                aDisplayParts.forEach(function (displayText) {
+                    var digitsOnly = displayText.replace(/[^0-9+]/g, '');
+                    if (digitsOnly.length >= 7 && !seenDigits.has(digitsOnly)) {
+                        seenDigits.add(digitsOnly);
+                        aUniqueDisplay.push(displayText);
+                    }
+                });
+
+                if (aUniqueDisplay.length === 0) {
+                    // Show placeholder if no valid phones found
+                    oPhonesContainer.addItem(new sap.m.Text({
+                        text: "No telephone available",
+                        wrapping: true,
+                        emphasized: false,
+                        class: "phone-pill placeholder-text"
+                    }));
+                } else {
+                    // Show actual phone numbers
+                    aUniqueDisplay.forEach(function (sDisplay, index) {
+                        var sClean = sDisplay
+                            .replace(/\s+/g, '')
+                            .replace(/\(Default\)/gi, '')
+                            .replace(/[^0-9+]/g, '');
+
+                        var isDefault = /\(default\)/i.test(sDisplay);
+
+                        var oLink = new sap.m.Link({
+                            text: sDisplay,
+                            href: sClean ? "tel:" + sClean : null,
+                            target: "_blank",
+                            wrapping: true,
+                            emphasized: isDefault,
+                            class: "phone-pill"
+                        });
+
+                        if (isDefault) {
+                            oLink.addStyleClass("default-pill");
+                        }
+
+                        oPhonesContainer.addItem(oLink);
+                    });
+                }
+            }
+
+            // ALWAYS show contacts container
+            var oContactsContainer = this.byId("idCustomerContacts");
+            if (oContactsContainer) {
+                oContactsContainer.setVisible(true);
+            }
+        },
+        _showDefaultContactPlaceholders: function () {
+            var oEmailsContainer = this.byId("idEmailsContainer");
+            oEmailsContainer.removeAllItems();
+
+            // Add email placeholder
+            oEmailsContainer.addItem(new sap.m.Text({
+                text: "No email available",
+                wrapping: true,
+                class: "sapUiTinyMarginEnd sapUiTinyMarginBottom email-pill placeholder-text"
+            }));
+
+            var oPhonesContainer = this.byId("idPhonesContainer");
+            oPhonesContainer.removeAllItems();
+
+            // Add phone placeholder
+            oPhonesContainer.addItem(new sap.m.Text({
+                text: "No telephone available",
+                wrapping: true,
+                emphasized: false,
+                class: "phone-pill placeholder-text"
+            }));
+
+            // ALWAYS show the contacts container
+            this.byId("idCustomerContacts").setVisible(true);
+
+            // Clear customer name
+            this.byId("idCustomerName").setText("No customer selected");
+        },
 
         onAddMobileNumber: function () {
             var sKunnr = this.byId("idCustomer").getValue();
@@ -313,142 +467,6 @@ sap.ui.define([
             this._oAddMobileDialog.open();
         },
 
-        onAddEmail: function () {
-            var sKunnr = this.byId("idCustomer").getValue();
-            if (!sKunnr) {
-                MessageToast.show("Please select a customer first");
-                return;
-            }
-
-            if (!this._oAddEmailDialog) {
-                this._oAddEmailDialog = new sap.m.Dialog({
-                    title: "Add/Update Email",
-                    type: "Message",
-                    resizable: true,
-                    draggable: true,
-                    contentWidth: "420px",
-                    content: [
-                        new sap.m.VBox({
-                            items: [
-                                new sap.m.Label({
-                                    text: "Email Address",
-                                    required: true,
-                                    labelFor: this.createId("inpNewEmail")
-                                }),
-                                new sap.m.Input({
-                                    id: this.createId("inpNewEmail"),
-                                    type: "Email",
-                                    placeholder: "e.g. customer@example.com",
-                                    liveChange: function (oEvent) {
-                                        var sVal = oEvent.getParameter("value");
-                                        // Basic email validation
-                                        if (sVal && !sVal.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-                                            oEvent.getSource().setValueState("Error");
-                                            oEvent.getSource().setValueStateText("Please enter a valid email address");
-                                        } else {
-                                            oEvent.getSource().setValueState("None");
-                                        }
-                                    }
-                                }),
-
-                                new sap.m.CheckBox({
-                                    id: this.createId("chkSetEmailDefault"),
-                                    text: "Set as default email address",
-                                    selected: false
-                                })
-                            ]
-                        }).addStyleClass("sapUiSmallMargin")
-                    ],
-
-                    beginButton: new sap.m.Button({
-                        text: "Update",
-                        type: "Emphasized",
-                        press: this._onConfirmUpdateEmail.bind(this)
-                    }),
-
-                    endButton: new sap.m.Button({
-                        text: "Cancel",
-                        press: function () {
-                            this._oAddEmailDialog.close();
-                        }.bind(this)
-                    }),
-
-                    afterClose: function () {
-                        // Clean up inputs
-                        sap.ui.getCore().byId(this.createId("inpNewEmail")).setValue("");
-                        sap.ui.getCore().byId(this.createId("chkSetEmailDefault")).setSelected(false);
-                        sap.ui.getCore().byId(this.createId("inpNewEmail")).setValueState("None");
-                    }.bind(this)
-                });
-
-                this.getView().addDependent(this._oAddEmailDialog);
-            }
-
-            this._oAddEmailDialog.open();
-        },
-
-        _onConfirmUpdateEmail: function () {
-            var sEmail = sap.ui.getCore().byId(this.createId("inpNewEmail")).getValue().trim();
-            var bDefault = sap.ui.getCore().byId(this.createId("chkSetEmailDefault")).getSelected();
-
-            // Email validation
-            if (!sEmail) {
-                MessageBox.error("Please enter an email address");
-                return;
-            }
-
-            // Basic email format validation
-            var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(sEmail)) {
-                MessageBox.error("Please enter a valid email address (e.g., customer@example.com)");
-                return;
-            }
-
-            var oModel = this.getView().getModel();
-            var sKunnrClean = this.byId("idCustomer").getValue();
-
-            var sPartnerInternal = sKunnrClean.padStart(10, "0");
-
-            var mParameters = {
-                PARTNER: sPartnerInternal,
-                EMAIL: sEmail
-            };
-
-            sap.ui.core.BusyIndicator.show(0);
-
-            oModel.callFunction("/UpdateEmail", {
-                method: "POST",
-                urlParameters: mParameters,
-
-                success: function (oData, oResponse) {
-                    sap.ui.core.BusyIndicator.hide();
-
-                    var sMsg = oData?.message || "Email updated successfully";
-                    MessageToast.show(sMsg);
-
-                    this._oAddEmailDialog.close();
-
-                    // Refresh customer data to show the updated email
-                    this._refreshCustomerData(sKunnrClean);
-
-                }.bind(this),
-
-                error: function (oError) {
-                    sap.ui.core.BusyIndicator.hide();
-
-                    var sMsg = "Failed to update email";
-                    if (oError.responseText) {
-                        try {
-                            var oJson = JSON.parse(oError.responseText);
-                            sMsg += ": " + (oJson.error?.message?.value || oJson.error?.innererror?.errordetails?.[0]?.message || "");
-                        } catch (e) { }
-                    }
-
-                    MessageBox.error(sMsg);
-                }
-            });
-        },
-
         _onConfirmAddMobile: function () {
             var sMobile = sap.ui.getCore().byId(this.createId("inpNewMobile")).getValue().trim();
             var sExt = sap.ui.getCore().byId(this.createId("inpExt")).getValue().trim();
@@ -502,10 +520,8 @@ sap.ui.define([
         _refreshCustomerData: function (sCustomer) {
             var oModel = this.getView().getModel();
             var sPath = "/CustomerSet";
-
-            var sKunnrWithZeros = sCustomer.padStart(10, "0");
             var aFilters = [
-                new Filter("KUNNR", FilterOperator.EQ, sKunnrWithZeros)
+                new Filter("KUNNR", FilterOperator.EQ, sCustomer.padStart(10, "0"))
             ];
 
             sap.ui.core.BusyIndicator.show(0);
@@ -514,103 +530,18 @@ sap.ui.define([
                 filters: aFilters,
                 success: function (oData) {
                     sap.ui.core.BusyIndicator.hide();
-
                     if (oData.results && oData.results.length > 0) {
                         var oCustomerData = oData.results[0];
                         this._updateCustomerContactDisplay(oCustomerData);
                     } else {
-                        MessageToast.show("Customer data not found after refresh");
+                        MessageToast.show("Could not fetch updated customer data");
                     }
                 }.bind(this),
                 error: function (oError) {
                     sap.ui.core.BusyIndicator.hide();
-                    MessageToast.show("Could not refresh customer data");
+                    MessageToast.show("Could not refresh customer data, but mobile was added");
                 }
             });
-        },
-
-        _updateCustomerContactDisplay: function (oCustomerData) {
-            if (!oCustomerData) return;
-
-            var sKunnrRaw = oCustomerData.KUNNR || "";
-            var sKunnrClean = sKunnrRaw.replace(/^0+/, '') || "0";
-            var sName = oCustomerData.NAME1 || "No customer name";
-
-            this.byId("idCustomerName").setText(sName);
-
-            var oEmailsContainer = this.byId("idEmailsContainer");
-            oEmailsContainer.removeAllItems();
-
-            var aEmails = (oCustomerData.EMAILS || "No email available")
-                .split(';')
-                .map(s => s.trim())
-                .filter(Boolean);
-
-            aEmails.forEach(function (sEmail) {
-                oEmailsContainer.addItem(new sap.m.Link({
-                    text: sEmail,
-                    href: "mailto:" + sEmail,
-                    target: "_blank",
-                    wrapping: true,
-                    class: "sapUiTinyMarginEnd sapUiTinyMarginBottom email-pill"
-                }));
-            });
-
-            var oPhonesContainer = this.byId("idPhonesContainer");
-            oPhonesContainer.removeAllItems();
-
-            var sRaw = oCustomerData.TELEPHONES || "No telephone available";
-
-            var aParts = sRaw.split(';')
-                .map(part => part.trim())
-                .filter(part => part.length > 0);
-
-            var aDisplayParts = [];
-            aParts.forEach(function (part, index) {
-                var trimmed = part.trim();
-                if (trimmed.includes("(Default)") && !/\s\(Default\)/.test(trimmed)) {
-                    trimmed = trimmed.replace("(Default)", " (Default)");
-                }
-                aDisplayParts.push(trimmed);
-            });
-
-            var aUniqueDisplay = [];
-            var seenDigits = new Set();
-
-            aDisplayParts.forEach(function (displayText) {
-                var digitsOnly = displayText.replace(/[^0-9+]/g, '');
-                if (digitsOnly.length >= 7 && !seenDigits.has(digitsOnly)) {
-                    seenDigits.add(digitsOnly);
-                    aUniqueDisplay.push(displayText);
-                }
-            });
-
-            aUniqueDisplay.forEach(function (sDisplay, index) {
-                var sClean = sDisplay
-                    .replace(/\s+/g, '')
-                    .replace(/\(Default\)/gi, '')
-                    .replace(/[^0-9+]/g, '');
-
-                var isDefault = /\(default\)/i.test(sDisplay);
-
-                var oLink = new sap.m.Link({
-                    text: sDisplay,
-                    href: sClean ? "tel:" + sClean : null,
-                    target: "_blank",
-                    wrapping: true,
-                    emphasized: isDefault,
-                    class: "phone-pill"
-                });
-
-                if (isDefault) {
-                    oLink.addStyleClass("default-pill");
-                }
-
-                oPhonesContainer.addItem(oLink);
-            });
-
-            var bHasPhones = aUniqueDisplay.length > 0 && aUniqueDisplay[0] !== "No telephone available";
-            this.byId("idCustomerContacts").setVisible(bHasPhones || aEmails.length > 0);
         },
 
         onCustomerChange: function (oEvent) {
@@ -618,11 +549,136 @@ sap.ui.define([
             if (!sValue) {
                 var oTableModel = this.getView().getModel("table");
                 oTableModel.setProperty("/equipmentItems", []);
-                this.byId("idCustomerContacts").setVisible(false);
-                this.byId("idEmailsContainer").removeAllItems();
-                this.byId("idPhonesContainer").removeAllItems();
+
+                // Show contacts container with placeholders
+                this.byId("idCustomerContacts").setVisible(true);
+                this._showDefaultContactPlaceholders();
+
+                // Update form model
+                var oFormModel = this.getView().getModel("form");
+                oFormModel.setProperty("/isCustomerSelected", false);
+
                 this._updateUIState();
             }
+        },
+
+        onAddEmail: function () {
+            var sKunnr = this.byId("idCustomer").getValue();
+            if (!sKunnr) {
+                MessageToast.show("Please select a customer first");
+                return;
+            }
+
+            if (!this._oAddEmailDialog) {
+                this._oAddEmailDialog = new sap.m.Dialog({
+                    title: "Add/Update Email",
+                    type: "Message",
+                    resizable: true,
+                    draggable: true,
+                    contentWidth: "420px",
+                    content: [
+                        new sap.m.VBox({
+                            items: [
+                                new sap.m.Label({
+                                    text: "Email Address",
+                                    required: true,
+                                    labelFor: this.createId("inpNewEmail")
+                                }),
+                                new sap.m.Input({
+                                    id: this.createId("inpNewEmail"),
+                                    type: "Email",
+                                    placeholder: "e.g. customer@example.com",
+                                    liveChange: function (oEvent) {
+                                        var sVal = oEvent.getParameter("value");
+                                        if (sVal && !sVal.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+                                            oEvent.getSource().setValueState("Error");
+                                            oEvent.getSource().setValueStateText("Please enter a valid email address");
+                                        } else {
+                                            oEvent.getSource().setValueState("None");
+                                        }
+                                    }
+                                }),
+                                new sap.m.CheckBox({
+                                    id: this.createId("chkSetEmailDefault"),
+                                    text: "Set as default email address",
+                                    selected: false
+                                })
+                            ]
+                        }).addStyleClass("sapUiSmallMargin")
+                    ],
+                    beginButton: new sap.m.Button({
+                        text: "Update",
+                        type: "Emphasized",
+                        press: this._onConfirmUpdateEmail.bind(this)
+                    }),
+                    endButton: new sap.m.Button({
+                        text: "Cancel",
+                        press: function () {
+                            this._oAddEmailDialog.close();
+                        }.bind(this)
+                    }),
+                    afterClose: function () {
+                        sap.ui.getCore().byId(this.createId("inpNewEmail")).setValue("");
+                        sap.ui.getCore().byId(this.createId("chkSetEmailDefault")).setSelected(false);
+                        sap.ui.getCore().byId(this.createId("inpNewEmail")).setValueState("None");
+                    }.bind(this)
+                });
+
+                this.getView().addDependent(this._oAddEmailDialog);
+            }
+
+            this._oAddEmailDialog.open();
+        },
+
+        _onConfirmUpdateEmail: function () {
+            var sEmail = sap.ui.getCore().byId(this.createId("inpNewEmail")).getValue().trim();
+            var bDefault = sap.ui.getCore().byId(this.createId("chkSetEmailDefault")).getSelected();
+
+            if (!sEmail) {
+                MessageBox.error("Please enter an email address");
+                return;
+            }
+
+            var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(sEmail)) {
+                MessageBox.error("Please enter a valid email address (e.g., customer@example.com)");
+                return;
+            }
+
+            var oModel = this.getView().getModel();
+            var sKunnrClean = this.byId("idCustomer").getValue();
+
+            var sPartnerInternal = sKunnrClean.padStart(10, "0");
+
+            var mParameters = {
+                PARTNER: sPartnerInternal,
+                EMAIL: sEmail
+            };
+
+            sap.ui.core.BusyIndicator.show(0);
+
+            oModel.callFunction("/UpdateEmail", {
+                method: "POST",
+                urlParameters: mParameters,
+                success: function (oData, oResponse) {
+                    sap.ui.core.BusyIndicator.hide();
+                    var sMsg = oData?.message || "Email updated successfully";
+                    MessageToast.show(sMsg);
+                    this._oAddEmailDialog.close();
+                    this._refreshCustomerData(sKunnrClean);
+                }.bind(this),
+                error: function (oError) {
+                    sap.ui.core.BusyIndicator.hide();
+                    var sMsg = "Failed to update email";
+                    if (oError.responseText) {
+                        try {
+                            var oJson = JSON.parse(oError.responseText);
+                            sMsg += ": " + (oJson.error?.message?.value || oJson.error?.innererror?.errordetails?.[0]?.message || "");
+                        } catch (e) { }
+                    }
+                    MessageBox.error(sMsg);
+                }
+            });
         },
 
         onEquipmentValueHelp: function (oEvent) {
@@ -918,6 +974,89 @@ sap.ui.define([
             }
         },
 
+        onPlateTypeChange: function (oEvent) {
+            var iSelectedIndex = oEvent.getParameter("selectedIndex");
+            var oFormModel = this.getView().getModel("form");
+
+            var sPlateType = iSelectedIndex === 0 ? "green" : "registered";
+            oFormModel.setProperty("/plateType", sPlateType);
+
+            this._updatePlateNumberFieldsVisibility();
+        },
+
+        _updatePlateNumberFieldsVisibility: function () {
+            var oFormModel = this.getView().getModel("form");
+            var sPlateType = oFormModel.getProperty("/plateType") || "green";
+
+            var oTable = this.byId("idEquipmentTable");
+            if (!oTable) return;
+
+            var aItems = oTable.getItems();
+            aItems.forEach(function (oItem) {
+                var oCells = oItem.getCells();
+                if (oCells.length >= 9) {
+                    var oGreenNumbersCell = oCells[5];
+                    var oGreenLettersCell = oCells[6];
+                    var oRegisteredCell = oCells[7];
+
+                    if (sPlateType === "green") {
+                        oGreenNumbersCell.setVisible(true);
+                        oGreenLettersCell.setVisible(true);
+                        oRegisteredCell.setVisible(false);
+                    } else {
+                        oGreenNumbersCell.setVisible(false);
+                        oGreenLettersCell.setVisible(false);
+                        oRegisteredCell.setVisible(true);
+                    }
+                }
+            });
+        },
+
+        _splitPlateNumber: function (sPlateNumber) {
+            if (!sPlateNumber || sPlateNumber.trim() === "") {
+                return { numeric: "", alphabet: "" };
+            }
+
+            sPlateNumber = sPlateNumber.replace(/\s+/g, '');
+
+            var sAlphabet = "";
+            var sNumeric = sPlateNumber;
+
+            for (var i = sPlateNumber.length - 1; i >= 0; i--) {
+                if (/[A-Za-z]/.test(sPlateNumber[i])) {
+                    sAlphabet = sPlateNumber[i] + sAlphabet;
+                } else {
+                    break;
+                }
+            }
+
+            if (sAlphabet.length > 0) {
+                sNumeric = sPlateNumber.substring(0, sPlateNumber.length - sAlphabet.length);
+            }
+
+            return {
+                numeric: sNumeric,
+                alphabet: sAlphabet.toUpperCase()
+            };
+        },
+
+        _combinePlateNumber: function (sNumeric, sAlphabet) {
+            sNumeric = (sNumeric || "").trim();
+            sAlphabet = (sAlphabet || "").trim().toUpperCase();
+
+            if (!sNumeric && !sAlphabet) {
+                return "";
+            }
+
+            if (sNumeric && sAlphabet) {
+                return sNumeric + " " + sAlphabet;
+            } else if (sNumeric) {
+                return sNumeric;
+            } else {
+                return sAlphabet;
+            }
+        },
+
         _loadCustomerEquipment: function (sCustomer) {
             sap.ui.core.BusyIndicator.show(0);
 
@@ -940,6 +1079,8 @@ sap.ui.define([
                             var sOriginalEqunr = oItem.EQUNR || "";
                             var sDisplayEqunr = sOriginalEqunr.replace(/^0+/, '') || "0";
 
+                            var oSplitPlate = this._splitPlateNumber(oItem.LICENSE_NUM || "");
+
                             aEquipmentItems.push({
                                 equnr: sDisplayEqunr,
                                 originalEqunr: sOriginalEqunr,
@@ -947,14 +1088,16 @@ sap.ui.define([
                                 name1: oItem.NAME1 || "",
                                 fleetVin: oItem.FLEET_VIN || "",
                                 chassisNum: oItem.CHASSIS_NUM || "",
-                                licenseNum: oItem.LICENSE_NUM || "",
-                                objnr: oItem.Objnr || "",
                                 originalLicenseNum: oItem.LICENSE_NUM || "",
+                                licenseNumNumeric: oSplitPlate.numeric,
+                                licenseNumAlphabet: oSplitPlate.alphabet,
+                                registeredLicenseNum: oItem.LICENSE_NUM || "",
+                                objnr: oItem.Objnr || "",
                                 hasChanged: false,
                                 editable: true,
                                 selected: false
                             });
-                        });
+                        }.bind(this));
 
                         this._showStatusMessage("Loaded " + aEquipmentItems.length + " equipment(s) for customer", "Success");
                     } else {
@@ -966,6 +1109,7 @@ sap.ui.define([
                     oTableModel.setProperty("/selectedEquipment", null);
 
                     this._updateUIState();
+                    this._updatePlateNumberFieldsVisibility();
 
                 }.bind(this),
                 error: function (oError) {
@@ -1006,6 +1150,8 @@ sap.ui.define([
                             var sDisplayEqunr = sOriginalEqunr.replace(/^0+/, '') || "0";
 
                             this._getCustomerForEquipment(sEquipment, function (sCustomerName) {
+                                var oSplitPlate = this._splitPlateNumber(oFleetData ? oFleetData.LICENSE_NUM || "" : "");
+
                                 var oItem = {
                                     equnr: sDisplayEqunr,
                                     originalEqunr: sOriginalEqunr,
@@ -1013,9 +1159,11 @@ sap.ui.define([
                                     name1: sCustomerName || "",
                                     fleetVin: oFleetData ? oFleetData.FLEET_VIN || "" : "",
                                     chassisNum: oFleetData ? oFleetData.CHASSIS_NUM || "" : "",
-                                    licenseNum: oFleetData ? oFleetData.LICENSE_NUM || "" : "",
-                                    objnr: oEquipData.OBJNR || "",
                                     originalLicenseNum: oFleetData ? oFleetData.LICENSE_NUM || "" : "",
+                                    licenseNumNumeric: oSplitPlate.numeric,
+                                    licenseNumAlphabet: oSplitPlate.alphabet,
+                                    registeredLicenseNum: oFleetData ? oFleetData.LICENSE_NUM || "" : "",
+                                    objnr: oEquipData.OBJNR || "",
                                     hasChanged: false,
                                     editable: true,
                                     selected: false
@@ -1028,6 +1176,7 @@ sap.ui.define([
                                 oTableModel.setProperty("/selectedEquipment", null);
 
                                 this._updateUIState();
+                                this._updatePlateNumberFieldsVisibility();
                                 this._showStatusMessage("Loaded equipment " + sDisplayEqunr, "Success");
 
                             }.bind(this));
@@ -1049,9 +1198,11 @@ sap.ui.define([
                                     name1: sCustomerName || "",
                                     fleetVin: "",
                                     chassisNum: "",
-                                    licenseNum: "",
-                                    objnr: oEquipData.OBJNR || "",
                                     originalLicenseNum: "",
+                                    licenseNumNumeric: "",
+                                    licenseNumAlphabet: "",
+                                    registeredLicenseNum: "",
+                                    objnr: oEquipData.OBJNR || "",
                                     hasChanged: false,
                                     editable: true,
                                     selected: false
@@ -1064,6 +1215,7 @@ sap.ui.define([
                                 oTableModel.setProperty("/selectedEquipment", null);
 
                                 this._updateUIState();
+                                this._updatePlateNumberFieldsVisibility();
                                 this._showStatusMessage("Loaded equipment (no fleet data found)", "Warning");
                             }.bind(this));
                         }.bind(this)
@@ -1104,6 +1256,8 @@ sap.ui.define([
                             var sDisplayEqunr = sOriginalEqunr.replace(/^0+/, '') || "0";
 
                             this._getEquipmentDetailsForVIN(sOriginalEqunr, sVIN, function (oDetails) {
+                                var oSplitPlate = this._splitPlateNumber(oItem.LICENSE_NUM || "");
+
                                 aEquipmentItems.push({
                                     equnr: sDisplayEqunr,
                                     originalEqunr: sOriginalEqunr,
@@ -1111,9 +1265,11 @@ sap.ui.define([
                                     name1: oDetails.NAME1 || "",
                                     fleetVin: oItem.FLEET_VIN || "",
                                     chassisNum: oItem.CHASSIS_NUM || "",
-                                    licenseNum: oItem.LICENSE_NUM || "",
-                                    objnr: oItem.OBJNR || "",
                                     originalLicenseNum: oItem.LICENSE_NUM || "",
+                                    licenseNumNumeric: oSplitPlate.numeric,
+                                    licenseNumAlphabet: oSplitPlate.alphabet,
+                                    registeredLicenseNum: oItem.LICENSE_NUM || "",
+                                    objnr: oItem.OBJNR || "",
                                     hasChanged: false,
                                     editable: true,
                                     selected: false
@@ -1124,6 +1280,7 @@ sap.ui.define([
                                 oTableModel.setProperty("/selectedEquipment", null);
 
                                 this._updateUIState();
+                                this._updatePlateNumberFieldsVisibility();
                                 this._showStatusMessage("Found equipment for VIN: " + sVIN, "Success");
                             }.bind(this));
                         }.bind(this));
@@ -1198,6 +1355,8 @@ sap.ui.define([
                             var sOriginalEqunr = oItem.Equnr || "";
                             var sDisplayEqunr = sOriginalEqunr.replace(/^0+/, '') || "0";
 
+                            var oSplitPlate = this._splitPlateNumber(oItem.LicenseNum || "");
+
                             aEquipmentItems.push({
                                 equnr: sDisplayEqunr,
                                 originalEqunr: sOriginalEqunr,
@@ -1205,14 +1364,16 @@ sap.ui.define([
                                 name1: oItem.Name1 || "",
                                 fleetVin: oItem.FleetVin || "",
                                 chassisNum: oItem.ChassisNum || "",
-                                licenseNum: oItem.LicenseNum || "",
-                                objnr: oItem.Objnr || "",
                                 originalLicenseNum: oItem.LicenseNum || "",
+                                licenseNumNumeric: oSplitPlate.numeric,
+                                licenseNumAlphabet: oSplitPlate.alphabet,
+                                registeredLicenseNum: oItem.LicenseNum || "",
+                                objnr: oItem.Objnr || "",
                                 hasChanged: false,
                                 editable: true,
                                 selected: false
                             });
-                        });
+                        }.bind(this));
 
                         this._showStatusMessage("Found " + aEquipmentItems.length + " equipment(s) for VIN: " + sVIN, "Success");
                     } else {
@@ -1224,6 +1385,7 @@ sap.ui.define([
                     oTableModel.setProperty("/selectedEquipment", null);
 
                     this._updateUIState();
+                    this._updatePlateNumberFieldsVisibility();
 
                 }.bind(this),
                 error: function (oError) {
@@ -1271,7 +1433,7 @@ sap.ui.define([
             }
         },
 
-        onPlateNumberChange: function (oEvent) {
+        onPlateNumericChange: function (oEvent) {
             var oInput = oEvent.getSource();
             var sNewValue = oInput.getValue();
             var oContext = oInput.getBindingContext("table");
@@ -1281,29 +1443,155 @@ sap.ui.define([
                 var oTableModel = this.getView().getModel("table");
                 var sPath = oContext.getPath();
 
-                if (sNewValue !== oData.originalLicenseNum) {
-                    oTableModel.setProperty(sPath + "/licenseNum", sNewValue);
-                    oTableModel.setProperty(sPath + "/hasChanged", true);
+                var sCleanedValue = sNewValue.replace(/[^0-9-]/g, '');
+                oInput.setValue(sCleanedValue);
 
-                    var aChangedItems = oTableModel.getProperty("/changedItems") || [];
-                    var oChangedItem = aChangedItems.find(function (item) {
-                        return item.equnr === oData.equnr;
-                    });
+                oTableModel.setProperty(sPath + "/licenseNumNumeric", sCleanedValue);
 
-                    if (!oChangedItem) {
-                        aChangedItems.push({
-                            equnr: oData.equnr,
-                            licenseNum: sNewValue,
-                            objnr: oData.objnr
-                        });
-                    } else {
-                        oChangedItem.licenseNum = sNewValue;
+                var sAlphabet = oData.licenseNumAlphabet || "";
+                var sCombined = this._combinePlateNumber(sCleanedValue, sAlphabet);
+
+                this._checkPlateNumberChange(oData, sCleanedValue, sAlphabet, sCombined, oTableModel, sPath, "green");
+            }
+        },
+
+        onPlateAlphabetChange: function (oEvent) {
+            var oInput = oEvent.getSource();
+            var sNewValue = oInput.getValue();
+            var oContext = oInput.getBindingContext("table");
+
+            if (oContext) {
+                var oData = oContext.getObject();
+                var oTableModel = this.getView().getModel("table");
+                var sPath = oContext.getPath();
+
+                var sCleanedValue = sNewValue.replace(/[^A-Za-z]/g, '').toUpperCase();
+                oInput.setValue(sCleanedValue);
+
+                oTableModel.setProperty(sPath + "/licenseNumAlphabet", sCleanedValue);
+
+                var sNumeric = oData.licenseNumNumeric || "";
+                var sCombined = this._combinePlateNumber(sNumeric, sCleanedValue);
+
+                this._checkPlateNumberChange(oData, sNumeric, sCleanedValue, sCombined, oTableModel, sPath, "green");
+            }
+        },
+
+        onRegisteredPlateChange: function (oEvent) {
+            var oInput = oEvent.getSource();
+            var sNewValue = oInput.getValue();
+            var oContext = oInput.getBindingContext("table");
+
+            if (oContext) {
+                var oData = oContext.getObject();
+                var oTableModel = this.getView().getModel("table");
+                var sPath = oContext.getPath();
+
+                var sCleanedValue = sNewValue.trim();
+                oTableModel.setProperty(sPath + "/registeredLicenseNum", sCleanedValue);
+
+                this._checkPlateNumberChange(oData, "", "", sCleanedValue, oTableModel, sPath, "registered");
+            }
+        },
+
+        _checkPlateNumberChange: function (oData, sNumeric, sAlphabet, sNewValue, oTableModel, sPath, sPlateType) {
+            var sOriginalValue = oData.originalLicenseNum;
+
+            if (sNewValue !== sOriginalValue) {
+                oTableModel.setProperty(sPath + "/hasChanged", true);
+
+                var aChangedItems = oTableModel.getProperty("/changedItems") || [];
+                var oChangedItem = aChangedItems.find(function (item) {
+                    return item.equnr === oData.equnr;
+                });
+
+                if (!oChangedItem) {
+                    var oNewChangedItem = {
+                        equnr: oData.equnr,
+                        objnr: oData.objnr,
+                        plateType: sPlateType,
+                        licenseNum: sNewValue
+                    };
+
+                    if (sPlateType === "green") {
+                        oNewChangedItem.licenseNumNumeric = sNumeric;
+                        oNewChangedItem.licenseNumAlphabet = sAlphabet;
                     }
 
-                    oTableModel.setProperty("/changedItems", aChangedItems);
-                    this._updateUIState();
-                    MessageToast.show("Plate number updated for " + oData.equnr);
+                    aChangedItems.push(oNewChangedItem);
+                } else {
+                    oChangedItem.plateType = sPlateType;
+                    oChangedItem.licenseNum = sNewValue;
+
+                    if (sPlateType === "green") {
+                        oChangedItem.licenseNumNumeric = sNumeric;
+                        oChangedItem.licenseNumAlphabet = sAlphabet;
+                    }
                 }
+
+                oTableModel.setProperty("/changedItems", aChangedItems);
+
+                this._updateUIState();
+
+                MessageToast.show("Plate number updated for " + oData.equnr);
+            } else {
+                oTableModel.setProperty(sPath + "/hasChanged", false);
+
+                var aChangedItems = oTableModel.getProperty("/changedItems") || [];
+                aChangedItems = aChangedItems.filter(function (item) {
+                    return item.equnr !== oData.equnr;
+                });
+                oTableModel.setProperty("/changedItems", aChangedItems);
+
+                this._updateUIState();
+            }
+        },
+
+        onPlateNumericLiveChange: function (oEvent) {
+            var sValue = oEvent.getParameter("value");
+            var oInput = oEvent.getSource();
+
+            if (sValue.match(/^-/)) {
+                oInput.setValueState("Error");
+                oInput.setValueStateText("Cannot start with dash");
+            } else if (sValue.match(/-$/)) {
+                oInput.setValueState("Error");
+                oInput.setValueStateText("Cannot end with dash");
+            } else if (sValue.match(/--/)) {
+                oInput.setValueState("Error");
+                oInput.setValueStateText("Cannot have consecutive dashes");
+            } else if (sValue.match(/[^0-9-]/)) {
+                oInput.setValueState("Error");
+                oInput.setValueStateText("Only numbers and dash allowed");
+            } else {
+                oInput.setValueState("None");
+            }
+        },
+
+        onPlateAlphabetLiveChange: function (oEvent) {
+            var sValue = oEvent.getParameter("value");
+            var oInput = oEvent.getSource();
+
+            if (sValue.match(/[^A-Za-z]/)) {
+                oInput.setValueState("Error");
+                oInput.setValueStateText("Only letters allowed");
+            } else if (sValue.length > 3) {
+                oInput.setValueState("Error");
+                oInput.setValueStateText("Maximum 3 letters allowed");
+            } else {
+                oInput.setValueState("None");
+            }
+        },
+
+        onRegisteredPlateLiveChange: function (oEvent) {
+            var sValue = oEvent.getParameter("value");
+            var oInput = oEvent.getSource();
+
+            if (sValue.length > 20) {
+                oInput.setValueState("Error");
+                oInput.setValueStateText("Maximum 20 characters allowed");
+            } else {
+                oInput.setValueState("None");
             }
         },
 
@@ -1361,33 +1649,45 @@ sap.ui.define([
                 return;
             }
 
-            if (!oSelectedItem.licenseNum || oSelectedItem.licenseNum.trim() === "") {
+            var oFormModel = this.getView().getModel("form");
+            var sPlateType = oFormModel.getProperty("/plateType") || "green";
+            var sLicenseNum = "";
+
+            if (sPlateType === "green") {
+                sLicenseNum = this._combinePlateNumber(oSelectedItem.licenseNumNumeric, oSelectedItem.licenseNumAlphabet);
+            } else {
+                sLicenseNum = oSelectedItem.registeredLicenseNum || "";
+            }
+
+            if (!sLicenseNum || sLicenseNum.trim() === "") {
                 MessageBox.error("Please enter a plate number for the selected equipment");
                 return;
             }
 
             MessageBox.confirm(
                 "Update plate number for Equipment " + sSelectedEquipment +
-                "?\n\nNew Plate Number: " + oSelectedItem.licenseNum,
+                "?\n\nNew Plate Number: " + sLicenseNum +
+                "\nPlate Type: " + (sPlateType === "green" ? "Green" : "Registered"),
                 {
                     title: "Confirm Update",
                     onClose: function (sAction) {
                         if (sAction === MessageBox.Action.OK) {
-                            this._updateSingleEquipment(oSelectedItem);
+                            this._updateSingleEquipment(oSelectedItem, sPlateType, sLicenseNum);
                         }
                     }.bind(this)
                 }
             );
         },
 
-        _updateSingleEquipment: function (oEquipment) {
+        _updateSingleEquipment: function (oEquipment, sPlateType, sLicenseNum) {
             sap.ui.core.BusyIndicator.show(0);
 
             var oModel = this.getView().getModel();
             var sPath = "/FleetSet('" + (oEquipment.originalEqunr || oEquipment.equnr) + "')";
+
             var oPayload = {
                 EQUNR: oEquipment.originalEqunr || oEquipment.equnr,
-                LICENSE_NUM: oEquipment.licenseNum
+                LICENSE_NUM: sLicenseNum
             };
 
             oModel.update(sPath, oPayload, {
@@ -1399,7 +1699,11 @@ sap.ui.define([
 
                     aEquipmentItems.forEach(function (item) {
                         if (item.equnr === oEquipment.equnr) {
-                            item.originalLicenseNum = oEquipment.licenseNum;
+                            item.originalLicenseNum = sLicenseNum;
+                            if (sPlateType === "green") {
+                                item.originalLicenseNumNumeric = oEquipment.licenseNumNumeric;
+                                item.originalLicenseNumAlphabet = oEquipment.licenseNumAlphabet;
+                            }
                             item.hasChanged = false;
                         }
                     });
@@ -1435,7 +1739,7 @@ sap.ui.define([
 
             var sMessage = "Update " + aChangedItems.length + " plate number(s)?\n\n";
             aChangedItems.forEach(function (item, index) {
-                sMessage += (index + 1) + ". Equipment " + item.equnr + ": " +
+                sMessage += (index + 1) + ". Equipment " + item.equnr + " (" + (item.plateType === "green" ? "Green" : "Registered") + "): " +
                     (item.licenseNum || "(empty)") + "\n";
             });
 
@@ -1477,6 +1781,10 @@ sap.ui.define([
 
                     if (oChangedItem) {
                         oItem.originalLicenseNum = oChangedItem.licenseNum;
+                        if (oChangedItem.plateType === "green") {
+                            oItem.originalLicenseNumNumeric = oChangedItem.licenseNumNumeric;
+                            oItem.originalLicenseNumAlphabet = oChangedItem.licenseNumAlphabet;
+                        }
                         oItem.hasChanged = false;
                     }
                 });
@@ -1505,7 +1813,8 @@ sap.ui.define([
 
             var oItem = aChangedItems[iIndex];
 
-            if (!oItem.licenseNum || oItem.licenseNum.trim() === "") {
+            var sLicenseNum = oItem.licenseNum || "";
+            if (!sLicenseNum || sLicenseNum.trim() === "") {
                 this._processUpdateSequentially(aChangedItems, iIndex + 1, iSuccessCount, iErrorCount, aErrors, oModel);
                 return;
             }
@@ -1521,7 +1830,7 @@ sap.ui.define([
             var sPath = "/FleetSet('" + sEqunrForUpdate + "')";
             var oPayload = {
                 EQUNR: sEqunrForUpdate,
-                LICENSE_NUM: oItem.licenseNum
+                LICENSE_NUM: sLicenseNum
             };
 
             oModel.update(sPath, oPayload, {
@@ -1574,9 +1883,13 @@ sap.ui.define([
             this.byId("idVINSearch").setValue("");
             this.byId("idVINDescription").setText("Search by VIN number");
 
-            this.byId("idCustomerContacts").setVisible(false);
-            this.byId("idEmailsContainer").removeAllItems();
-            this.byId("idPhonesContainer").removeAllItems();
+            // Show contacts container with placeholders
+            this.byId("idCustomerContacts").setVisible(true);
+            this._showDefaultContactPlaceholders();
+
+            // Update form model
+            var oFormModel = this.getView().getModel("form");
+            oFormModel.setProperty("/isCustomerSelected", false);
 
             var oTableModel = this.getView().getModel("table");
             oTableModel.setProperty("/equipmentItems", []);
@@ -1586,7 +1899,6 @@ sap.ui.define([
             this._updateUIState();
             this._showStatusMessage("Filters cleared", "Information");
         },
-
         onRefreshPress: function () {
             var sCustomer = this.byId("idCustomer").getValue();
             var sEquipment = this.byId("idEquipment").getValue();

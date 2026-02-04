@@ -3,6 +3,11 @@
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     border: 1px solid #e0e0e0;
+    overflow: hidden;                /* ← prevents content from visually escaping panel */
+}
+
+.modern-panel .sapMPanelContent {
+    padding: 0 !important;           /* keep if you want zero internal padding */
 }
 
 /* Compact Input Fields */
@@ -11,13 +16,20 @@
     font-size: 0.875rem;
 }
 
+.compact-input:hover:not(.readonly),
+.compact-input:focus {
+    border-color: #0a6ed1;
+    box-shadow: 0 0 0 2px rgba(10, 110, 209, 0.1);
+    outline: none;
+}
+
 .compact-input.readonly {
     background-color: #f9f9f9;
     border-color: #e0e0e0;
     color: #666;
 }
 
-/* Description Text */
+/* Description / Helper Text */
 .description-text {
     color: #32363a;
     font-style: italic;
@@ -29,135 +41,15 @@
     border-left: 3px solid #0a6ed1;
 }
 
-.description-compact {
-    color: #666;
-    font-size: 0.8125rem;
-    min-height: 18px;
-    padding: 2px 6px;
-    background-color: #f5f5f5;
-    border-radius: 3px;
-}
-
-/* Field Labels */
-.field-label {
-    font-size: 0.8125rem;
-    color: #666;
-    margin-bottom: 2px;
-}
-
-/* Compact Buttons */
-.compact-button {
-    min-height: 32px;
-    font-size: 0.875rem;
-}
-
-/* Readonly Field Styling */
-.readonly-field {
-    background-color: #f8f9fa;
-    border-color: #dee2e6;
-    color: #495057;
-}
-
-/* Status Message Area */
+/* Status Message */
 .status-message {
-    width: 450px;
+    max-width: 100%;
+    width: 100%;
+    word-break: break-word;
     transition: all 0.3s ease;
 }
 
-/* Responsive Adjustments */
-@media (max-width: 600px) {
-    .modern-panel {
-        width: 100% !important;
-        margin: 8px;
-    }
-    
-    .compact-input {
-        width: 100% !important;
-    }
-    
-    .status-message {
-        width: 100% !important;
-    }
-}
-
-/* Hover Effects */
-.compact-input:hover:not(.readonly) {
-    border-color: #0a6ed1;
-}
-
-.compact-button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Focus States */
-.compact-input:focus {
-    outline: none;
-    border-color: #0a6ed1;
-    box-shadow: 0 0 0 2px rgba(10, 110, 209, 0.1);
-}
-
-.search-section {
-    padding: 1rem;
-    background-color: #f7f7f7;
-    border-radius: 4px;
-    margin-bottom: 1rem;
-}
-
-.search-field {
-    flex: 1;
-    margin-right: 2rem;
-}
-
-.search-field:last-child {
-    margin-right: 0;
-}
-
-.action-buttons {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.equipment-table {
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-.status-section {
-    padding-top: 1rem;
-    border-top: 1px solid #ddd;
-}
-
-.status-message {
-    max-width: 500px;
-}
-
-.field-label {
-    font-weight: bold;
-    margin-bottom: 0.25rem;
-}
-
-/* Make table inputs more compact */
-.sapMInput {
-    height: 2rem;
-    font-size: 0.875rem;
-}
-
-/* Panel styling */
-.modern-panel .sapMPanelContent {
-    padding: 0 !important;
-}
-
-/* Button spacing */
-.sapMBtn {
-    margin-right: 0.5rem;
-}
-
-.sapMBtn:last-child {
-    margin-right: 0;
-}
-
+/* Customer Contacts Section */
 .customer-info-section {
     background-color: #f7f9fc;
     border-left: 4px solid #0a6ed1;
@@ -166,167 +58,84 @@
     margin-top: 8px;
 }
 
-.customer-name {
-    font-weight: 600;
-    color: #0a6ed1;
-    font-size: 1rem;
-}
-
-.contact-info {
-    background-color: #ffffff;
-    padding: 10px;
-    border-radius: 4px;
-    border: 1px solid #d9d9d9;
-    margin-top: 8px;
-}
-
-.contact-text {
-    font-size: 0.875rem;
-    color: #32363a;
-    line-height: 1.4;
-}
-
-/* Make default phone number stand out – primary look */
-.defaultPhone {
-    font-weight: bold;
-    color: #0f828f;              /* SAP primary blue-ish */
-    background-color: #e6f1f5;   /* light background */
-    padding: 1px 6px;
-    border-radius: 3px;
-}
-
-/* General phone links spacing */
-#idPhonesContainer .sapMLnk {
-    margin-right: 16px !important;
-    margin-bottom: 4px;
-}
-
-/* Highlight default phone chip */
-.defaultPhoneChip {
-    font-weight: bold !important;
-    background-color: #e6f0fa !important;   /* light blue */
-    border: 1px solid #00689e !important;
-    color: #00689e !important;
-}
-
-/* Better spacing between chips */
-#idPhonesContainer .sapMChip {
-    margin: 0 0.5rem 0.5rem 0 !important;
-}
-
-/* Make sure chips wrap nicely */
-#idPhonesContainer {
-    flex-wrap: wrap;
-    display: flex;
-}
-
-.phone-link {
-    font-size: 1rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: 1rem;
-    background-color: #f5f7fa;
-    border: 1px solid #d1d9e0;
-    text-decoration: none !important;
-}
-
-.defaultPhoneHighlight {
-    font-weight: bold;
-    background-color: #e6f0fa !important;
-    border-color: #00689e;
-    color: #00689e;
-}
-
-/* Email links styling */
-.email-link {
-    padding: 0.25rem 0.75rem;
-    border-radius: 1rem;
-    background-color: #f0f4f7;
-    border: 1px solid #c3d1dc;
-    text-decoration: none !important;
-    color: #00689e;
-}
-
-/* Phone pill styling */
-.phone-pill {
-    padding: 0.35rem 0.9rem;
-    border-radius: 1.25rem;
-    background-color: #f5f7fa;
-    border: 1px solid #d1d9e0;
-    text-decoration: none !important;
-    color: #354a5f;
-    font-size: 0.95rem;
-    white-space: nowrap;
-}
-
-/* Highlight default phone pill */
-.default-pill {
-    font-weight: bold;
-    background-color: #e6f0fa !important;
-    border-color: #00689e;
-    color: #00689e;
-}
-
-/* Better spacing and wrapping */
+/* Phone & Email Containers – critical for preventing overflow */
 #idEmailsContainer,
-#idPhonesContainer {
-    flex-wrap: wrap;
+#idPhonesContainer,
+.phone-container {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
+    margin-bottom: 0.5rem;
 }
 
-.phone-with-margin {
-    margin-right: 0.75rem !important;   /* space to the right of each pill */
-    margin-bottom: 0.5rem !important;   /* when wrapping to next line */
-}
-
-.phone-pill {
+/* Phone/Email pill styling (consolidated) */
+.phone-pill,
+.email-link,
+.phone-link {
     padding: 0.35rem 0.85rem;
     border-radius: 1.25rem;
     background-color: #f5f7fa;
     border: 1px solid #d1d9e0;
-    text-decoration: none !important;
     color: #354a5f;
     font-size: 0.95rem;
     white-space: nowrap;
-    display: inline-block;
-}
-
-/* Force flex + gap behavior even if control doesn't support gap natively */
-.phone-container {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 0.5rem 0.75rem !important;   /* row gap  |  column gap */
-}
-
-/* Each pill/link gets baseline styling */
-.phone-pill {
-    padding: 0.35rem 0.9rem;
-    border-radius: 1.25rem;
-    background-color: #f5f7fa;
-    border: 1px solid #d1d9e0;
     text-decoration: none !important;
-    color: #354a5f;
-    font-size: 0.95rem;
-    white-space: nowrap;
     display: inline-flex;
     align-items: center;
 }
 
-/* Default highlighted pill */
-.default-pill {
+/* Default/highlighted pill */
+.default-pill,
+.defaultPhoneChip,
+.defaultPhoneHighlight {
     font-weight: bold;
     background-color: #e6f0fa !important;
-    border-color: #00689e;
-    color: #00689e;
+    border-color: #00689e !important;
+    color: #00689e !important;
 }
 
-/* Fallback spacing if CSS gap is ignored (very old browsers/UI5) */
-.phone-pill {
-    margin-right: 0.75rem !important;
-    margin-bottom: 0.5rem !important;
+/* Responsive fixes */
+@media (max-width: 600px) {
+    .modern-panel {
+        margin: 8px 4px;
+        width: calc(100% - 16px) !important;
+    }
+
+    .status-message {
+        max-width: 100% !important;
+    }
+
+    .sapUiSmallMarginEnd {
+        margin-right: 0 !important;
+    }
 }
 
-/* Make sure last item in row has no right margin (optional polish) */
-.phone-container > *:last-child {
-    margin-right: 0 !important;
+/* Table compactness */
+.equipment-table {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.sapMInput {
+    height: 2rem;
+    font-size: 0.875rem;
+}
+
+/* Optional: better cell padding on mobile */
+@media (max-width: 600px) {
+    .equipment-table .sapMListTblCell {
+        padding: 0.5rem;
+    }
+}
+
+#idCustomerContacts {
+    padding-left: 1rem;          /* slight indent under the input */
+    border-left: 3px solid #0a6ed1;   /* optional visual connection */
+    margin-top: 0.75rem;
+    background: #f8fcff;         /* optional light background */
+    border-radius: 4px;
+}
+.placeholder-text {
+    color: #6a6d70;
+    font-style: italic;
 }
