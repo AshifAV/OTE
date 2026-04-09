@@ -47,7 +47,7 @@
                                         <f:content>
 
                                             <!-- Customer + Contacts below it -->
-                                            <Label text="Customer" design="Bold" />
+                                            <Label text="Select Customer" design="Bold" />
                                             <VBox>
                                                 <HBox alignItems="Center">
                                                     <Input
