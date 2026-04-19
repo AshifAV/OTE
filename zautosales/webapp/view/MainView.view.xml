@@ -1,0 +1,84 @@
+<mvc:View
+    controllerName="zautosales.controller.MainView"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    height="100%">
+
+    <App>
+        <pages>
+            <Page id="MainPage" title="Material Stock Overview" showHeader="true" enableScrolling="true" backgroundDesign="Solid">
+
+                <headerContent>
+                    <OverflowToolbar>
+                        <ToolbarSpacer/>
+                        <Button id="processButton" text="Process" type="Emphasized" press="onProcessSelected" enabled="false" icon="sap-icon://accept"/>
+                        <Button id="refreshButton" text="Refresh" type="Transparent" press="onRefresh" icon="sap-icon://refresh"/>
+                    </OverflowToolbar>
+                </headerContent>
+
+                <content>
+                    <VBox width="100%" height="100%" class="sapUiContentPadding">
+                        <OverflowToolbar class="sapUiSmallMarginBottom">
+                            <content>
+                                <ObjectStatus id="selectedCountText" text="No items selected" state="Information"/>
+                                <ToolbarSpacer/>
+                                <ObjectStatus id="totalCountText" text="Total: 0" state="Success"/>
+                            </content>
+                        </OverflowToolbar>
+
+                        <VBox class="sapUiResponsiveContentPadding">
+                            <Table id="materialTable" width="100%" mode="MultiSelect"
+                                   items="{path: '/MaterialStockSet'}"
+                                   growing="true" growingThreshold="20"
+                                   noDataText="No material stock data found"
+                                   sticky="ColumnHeaders"
+                                   autoPopinMode="true" popinLayout="Block">
+
+                                <columns>
+                                    <Column minScreenWidth="Tablet" demandPopin="true"><header><Text text="Material"/></header></Column>
+                                    <Column minScreenWidth="Tablet" demandPopin="true"><header><Text text="Description"/></header></Column>
+                                    <Column minScreenWidth="Tablet" demandPopin="true"><header><Text text="Plant"/></header></Column>
+                                    <Column minScreenWidth="Tablet" demandPopin="true"><header><Text text="Storage Location"/></header></Column>
+                                    <Column minScreenWidth="Tablet" demandPopin="true" hAlign="End"><header><Text text="Stock"/></header></Column>
+                                    <Column minScreenWidth="Tablet" demandPopin="true" hAlign="End"><header><Text text="Price"/></header></Column>
+                                    <Column minScreenWidth="Tablet" demandPopin="true" hAlign="End"><header><Text text="Quantity"/></header></Column>
+                                </columns>
+
+                                <items>
+                                    <ColumnListItem type="Active">
+                                        <cells>
+                                            <Text text="{Matnr}"/>
+                                            <Text text="{Maktx}"/>
+                                            <Text text="{Werks}"/>
+                                            <Text text="{Lgort}"/>
+                                            <ObjectNumber number="{ path: 'Labst', formatter: '.formatter.formatStock' }" textAlign="End"/>
+                                            <ObjectNumber number="{ path: 'Kbetr', formatter: '.formatter.formatPrice' }" textAlign="End"/>
+                                            
+                                            <!-- Most Stable Quantity Input -->
+                                            <Input 
+                                                value="{parts: [{path: 'local>/'}, {path: ''}], formatter: '.formatter.getQuantity'}"
+                                                type="Number"
+                                                textAlign="End"
+                                                placeholder="0"
+                                                width="100%"
+                                                change="onQuantityChange"
+                                                liveChange="onQuantityChange"/>
+                                        </cells>
+                                    </ColumnListItem>
+                                </items>
+                            </Table>
+                        </VBox>
+                    </VBox>
+                </content>
+
+                <footer>
+                    <OverflowToolbar>
+                        <Button text="Clear" type="Default" press="onClearSelection" icon="sap-icon://clear"/>
+                        <ToolbarSpacer/>
+                        <Button id="footerProcessButton" text="Process Selected" type="Emphasized" press="onProcessSelected" enabled="false" icon="sap-icon://accept"/>
+                    </OverflowToolbar>
+                </footer>
+            </Page>
+        </pages>
+    </App>
+</mvc:View>
